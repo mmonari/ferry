@@ -1,0 +1,15 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: status(&s)
+---
+desk (this machine)
+  fingerprint  4444444444444444444444444444444444444444444444444444444444444444
+  state        away (laptop)
+  port         4243/udp
+  role         source (laptop)
+  capture      portal (armed, 1 barrier)
+  lock         off
+  screen       unknown
+  escape       Super+Ctrl+Escape
+
+No peers. Pin one with: ferry trust <fingerprint> --name <name> --addr <ip>

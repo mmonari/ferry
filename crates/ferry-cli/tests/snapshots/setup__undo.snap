@@ -1,0 +1,83 @@
+---
+source: crates/ferry-cli/tests/setup.rs
+expression: out
+---
+ferry setup --undo
+
+[1/7] bar plugin (ferry.bar: the widget and panels in omarchy-shell)
+  will do:
+  --- ~/.config/omarchy/shell.json (take the widget off the bar)
+              "id": "omarchy.tray"
+            },
+  -         {
+  -           "id": "ferry.bar"
+  -         },
+            {
+              "id": "omarchy.keyboard-layout"
+  $ rm ~/.config/omarchy/plugins/ferry.bar
+  $ omarchy-shell -q shell rescanPlugins
+  apply? yes (--yes)
+  backup: ~/.config/omarchy/shell.json.ferry-bak.1800000000.1
+  done: took the widget off the bar and removed the link
+
+[2/7] ferryd.service
+  will do:
+  $ systemctl --user disable --now ferryd
+  delete ~/.config/systemd/user/ferryd.service (setup wrote it)
+  $ systemctl --user daemon-reload
+  apply? yes (--yes)
+  done: ferryd.service is disabled and stopped
+
+[3/7] input-capture permission (only when ecosystem:enforce_permissions is on)
+  skipped: not in ferry.lua
+
+[4/7] release_pressed_on_close (clients see key-ups when a virtual keyboard dies)
+  will do:
+  --- ~/.config/hypr/ferry.lua (remove the block)
+  - 
+  - -- ferry:begin release-pressed-on-close
+  - -- Clients see key-ups when a virtual keyboard dies.
+  - hl.config({ input = { virtualkeyboard = { release_pressed_on_close = true } } })
+  - -- ferry:end release-pressed-on-close
+  apply? yes (--yes)
+  backup: ~/.config/hypr/ferry.lua.ferry-bak.1800000000.2
+  done: Hyprland no longer has it
+
+[5/7] go binds (the go chord and an arrow key move to the machine on that side)
+  will do:
+  --- ~/.config/hypr/ferry.lua (remove the block)
+  - 
+  - -- ferry:begin go-binds
+  - -- Go binds: move the keyboard and mouse to the machine on that side.
+  - hl.bind("SUPER + CTRL + ALT + LEFT", hl.dsp.exec_cmd("ferry go left"), { description = "ferry: go left" })
+  - hl.bind("SUPER + CTRL + ALT + RIGHT", hl.dsp.exec_cmd("ferry go right"), { description = "ferry: go right" })
+  - hl.bind("SUPER + CTRL + ALT + UP", hl.dsp.exec_cmd("ferry go up"), { description = "ferry: go up" })
+  - hl.bind("SUPER + CTRL + ALT + DOWN", hl.dsp.exec_cmd("ferry go down"), { description = "ferry: go down" })
+  - -- ferry:end go-binds
+  apply? yes (--yes)
+  backup: ~/.config/hypr/ferry.lua.ferry-bak.1800000000.3
+  done: Hyprland no longer has it
+
+[6/7] escape bind (SUPER + CTRL + ESCAPE returns input from any capture)
+  will do:
+  --- ~/.config/hypr/ferry.lua (delete)
+  - -- Written by `ferry setup`; `ferry setup --undo` removes this file and its require line.
+  - 
+  - -- ferry:begin escape-bind
+  - -- Escape bind: returns input to this machine even if ferryd hangs.
+  - hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "ferry: release input capture" })
+  - -- ferry:end escape-bind
+  --- ~/.config/hypr/hyprland.lua (remove the line setup added)
+  - 
+  - -- ferry: loads ferry.lua (`ferry setup --undo` removes this line)
+  - require("hypr.ferry")
+  apply? yes (--yes)
+  backup: ~/.config/hypr/hyprland.lua.ferry-bak.1800000000.1
+  backup: ~/.config/hypr/ferry.lua.ferry-bak.1800000000.4
+  done: Hyprland no longer has it
+
+[7/7] firewall (ufw)
+  if setup's rule is there, remove it with: sudo ufw delete allow 4243/udp
+  nothing changed: setup never runs sudo to undo
+
+5 done, 1 skipped, 0 declined, 0 not applied, 1 printed only, 0 failed

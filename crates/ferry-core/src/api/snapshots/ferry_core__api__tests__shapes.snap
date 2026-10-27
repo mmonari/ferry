@@ -1,0 +1,52 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: s
+---
+hello
+{"event":"hello","data":{"api":1,"version":"0.1.0","peer":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","methods":["status","subscribe"],"topics":["state","layout"]}}
+status
+{"id":1,"result":{"api":1,"me":{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"port":4243,"role":"source","active_peer":{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"},"capture":{"backend":"portal","gate":"armed","barriers":1,"failed_barriers":[]},"screen_locked":false,"locked":false,"peers":[{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","state":"connected","addr":"192.0.2.11:4243","rtt_us":850,"proto":"1.0","suspect":true,"locked":true},{"name":"old","fingerprint":"abababababababababababababababababababababababababababababababab","state":"refused","proto":"2.0","detail":"version mismatch: 1.0 vs 2.0","suspect":false,"locked":false}],"last_release":{"reason":"home","ago_ms":1200},"counters":{"bounces":2,"silence_releases":0},"summary":{"state":"away","peer":"laptop"},"attention":[],"escape_chord":"Super+Ctrl+Escape"}}
+status (idle, lock unknown)
+{"id":2,"result":{"api":1,"me":{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"port":4243,"role":"idle","capture":{"backend":"off","gate":"off","barriers":0,"failed_barriers":[]},"screen_locked":null,"locked":false,"peers":[],"counters":{},"summary":{"state":"idle"},"attention":[],"escape_chord":"Super+Ctrl+Escape"}}
+status (target, locked here, attention)
+{"id":9,"result":{"api":1,"me":{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"port":4243,"role":"target","active_peer":{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"},"capture":{"backend":"portal","gate":"idle","barriers":0,"failed_barriers":[],"off_reason":"controlled"},"screen_locked":false,"locked":true,"peers":[],"last_release":{"reason":"home","ago_ms":1200},"counters":{},"summary":{"state":"attention"},"attention":[{"code":"peer_refused","message":"laptop cannot connect: version mismatch: 1.0 vs 2.0","hint":"`ferry doctor` has the details. After a key change or if it unpaired this machine, `ferry unpair laptop` and pair again; after a version mismatch, update the older ferry","peer":"laptop"}],"escape_chord":"Super+Ctrl+Escape"}}
+lock
+{"id":10,"result":{"locked":true}}
+release
+{"id":3,"result":{}}
+id
+{"id":4,"result":{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","port":4243,"addrs":["192.0.2.111"]}}
+trust
+{"id":5,"result":{"peer":{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"}}}
+layout.get / layout.place
+{"id":6,"result":{"revision":{"counter":1,"peer":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"peers":[{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","origin":[0,0],"monitors":[{"name":"HDMI-A-1","x":0,"y":0,"w":1920,"h":1080,"scale":1.0,"description":"Dell Inc. DELL U2415 7MT0167B1ZUL","transform":0}],"online":true,"trusted":true,"self":true,"bounds":{"x":0,"y":0,"w":1920,"h":1080}},{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","origin":[277,1080],"monitors":[{"name":"eDP-1","x":277,"y":1080,"w":1366,"h":768,"scale":1.0,"description":"Chimei Innolux 0x1366","transform":0}],"online":true,"trusted":true,"self":false,"bounds":{"x":277,"y":1080,"w":1366,"h":768}}],"links":[{"from":"desk:HDMI-A-1","side":"bottom","to":"laptop:eDP-1","span":[277,1643],"live":true}]}}
+layout.get (shifted group, third peer)
+{"id":7,"result":{"revision":{"counter":1,"peer":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"peers":[{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","origin":[0,0],"monitors":[{"name":"HDMI-A-1","x":1920,"y":0,"w":1920,"h":1080,"scale":1.0,"description":"Dell Inc. DELL U2415 7MT0167B1ZUL","transform":1}],"online":true,"trusted":true,"self":true,"bounds":{"x":1920,"y":0,"w":1080,"h":1920},"shift":[1920,0]},{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","origin":[277,1080],"monitors":[{"name":"eDP-1","x":277,"y":1080,"w":1366,"h":768,"scale":1.0,"description":"Chimei Innolux 0x1366","transform":0}],"online":true,"trusted":true,"self":false,"bounds":{"x":277,"y":1080,"w":1366,"h":768}},{"name":"4b1f0a9c","fingerprint":"3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c","origin":[-1920,0],"monitors":[],"online":false,"trusted":false,"self":false,"bounds":null}],"links":[{"from":"desk:HDMI-A-1","side":"bottom","to":"laptop:eDP-1","span":[277,1643],"live":true}]}}
+error
+{"id":9,"error":{"code":"unknown_method","message":"…"}}
+error
+{"id":9,"error":{"code":"bad_params","message":"…"}}
+error
+{"id":9,"error":{"code":"bad_fingerprint","message":"…"}}
+error
+{"id":9,"error":{"code":"self_fingerprint","message":"…"}}
+error
+{"id":9,"error":{"code":"unknown_peer","message":"…"}}
+error
+{"id":9,"error":{"code":"ambiguous_peer","message":"…"}}
+error
+{"id":9,"error":{"code":"unknown_anchor","message":"…"}}
+error
+{"id":9,"error":{"code":"ambiguous_anchor","message":"…"}}
+error
+{"id":9,"error":{"code":"peer_monitors_unknown","message":"…","hint":"start ferryd on laptop and check ferry status"}}
+error
+{"id":9,"error":{"code":"overlap","message":"…"}}
+error
+{"id":9,"error":{"code":"stale_layout","message":"…"}}
+error
+{"id":9,"error":{"code":"internal","message":"…"}}
+error (layout.set)
+{"id":10,"error":{"code":"overlap","message":"laptop overlaps desk","hint":"ferry layout show lists where each peer's monitors are"}}
+error (layout.set)
+{"id":11,"error":{"code":"stale_layout","message":"the layout changed (rev 15 by laptop)","hint":"read the layout again with layout.get, then apply your change on top of it"}}

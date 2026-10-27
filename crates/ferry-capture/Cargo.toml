@@ -1,0 +1,30 @@
+[package]
+name = "ferry-capture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "ferry's capture backends: the InputCapture portal session (ctl thread), the EIS receiver (capture thread), the lock check, the start-up IPC release and logind's PrepareForSleep"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferry-core = { path = "../ferry-core" }
+ferry-hypr-ipc = { path = "../ferry-hypr-ipc" }
+# Versions from architecture §2, proven in S1 (spikes/s01-portal).
+ashpd = { version = "=0.13.13", default-features = false, features = ["input_capture", "tokio"] }
+reis = "=0.7.1"
+serde = "=1.0.229"
+calloop = "=0.14.5"
+futures-util = "=0.3.31"
+thiserror = "=2.0.21"
+tokio = { version = "=1.53.3", features = ["rt", "macros", "time", "net", "io-util", "sync"] }
+tracing = "=0.1.44"
+
+[dev-dependencies]
+# Only examples/capture-probe.rs; no file in src/ names it.
+rustix = { version = "=1.1.5", features = ["time"] }
+tokio = { version = "=1.53.3", features = ["rt", "macros", "time", "net", "io-util", "sync", "signal"] }
+tempfile = "=3.27.0"

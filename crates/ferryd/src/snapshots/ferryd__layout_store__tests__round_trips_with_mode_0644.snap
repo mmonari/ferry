@@ -1,0 +1,32 @@
+---
+source: crates/ferryd/src/layout_store.rs
+expression: text
+---
+[revision]
+counter = 1
+peer = "<me>"
+
+[[origin]]
+peer = "<me>"
+x = 0
+y = 0
+
+[[origin]]
+peer = "<laptop>"
+x = 277
+y = 1080
+
+[[known]]
+peer = "<laptop>"
+
+[[known.monitor]]
+name = "eDP-1"
+description = "eDP-1 desc"
+scale = 1.0
+transform = 0
+
+[known.monitor.rect]
+x = 0
+y = 0
+w = 1366
+h = 768

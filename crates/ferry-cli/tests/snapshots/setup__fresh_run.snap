@@ -1,0 +1,129 @@
+---
+source: crates/ferry-cli/tests/setup.rs
+expression: out
+---
+ferry setup
+
+[1/7] bar plugin (ferry.bar: the widget and panels in omarchy-shell)
+  will do:
+  $ ln -s <tmp>/usr/share/ferry/plugin ~/.config/omarchy/plugins/ferry.bar
+  $ omarchy-shell -q shell rescanPlugins
+  --- ~/.config/omarchy/shell.json (add the widget to the bar: right, after omarchy.tray)
+              "id": "omarchy.tray"
+            },
+  +         {
+  +           "id": "ferry.bar"
+  +         },
+            {
+              "id": "omarchy.keyboard-layout"
+  apply? yes (--yes)
+  backup: ~/.config/omarchy/shell.json.ferry-bak.1800000000
+  done: linked ferry.bar and put the widget on the bar (right, after omarchy.tray)
+
+[2/7] ferryd.service
+  ferryd.service is not enabled, not active.
+  will do:
+  --- ~/.config/systemd/user/ferryd.service (new file)
+  + # Written by `ferry setup`; `ferry setup --undo` removes this file (ExecStart is this build's ferryd).
+  + # ferry daemon: one keyboard and mouse across Omarchy machines.
+  + #
+  + # Packaged copy: /usr/lib/systemd/user/ferryd.service. `ferry setup` writes the same file to
+  + # ~/.config/systemd/user/ferryd.service for a build without a package, with ExecStart= set to
+  + # the ferryd next to the ferry that ran setup.
+  + [Unit]
+  + Description=ferry daemon: one keyboard and mouse across Omarchy machines
+  + PartOf=graphical-session.target
+  + After=graphical-session.target
+  + StartLimitIntervalSec=0
+  + 
+  + [Service]
+  + Type=notify
+  + NotifyAccess=main
+  + ExecStart=<tmp>/bin/ferryd
+  + Restart=on-failure
+  + RestartSec=200ms
+  + RestartSteps=5
+  + RestartMaxDelaySec=10s
+  + WatchdogSec=2s
+  + TimeoutStartSec=10s
+  + TimeoutStopSec=3s
+  + NoNewPrivileges=yes
+  + LimitCORE=0
+  + UMask=0077
+  + SyslogIdentifier=ferryd
+  + 
+  + [Install]
+  + WantedBy=graphical-session.target
+  $ systemctl --user daemon-reload
+  $ systemctl --user enable --now ferryd
+  apply? yes (--yes)
+  done: ferryd.service is enabled and started
+
+[3/7] escape bind (SUPER + CTRL + ESCAPE returns input from any capture)
+  will do:
+  --- ~/.config/hypr/ferry.lua (new file)
+  + -- Written by `ferry setup`; `ferry setup --undo` removes this file and its require line.
+  + 
+  + -- ferry:begin escape-bind
+  + -- Escape bind: returns input to this machine even if ferryd hangs.
+  + hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "ferry: release input capture" })
+  + -- ferry:end escape-bind
+  --- ~/.config/hypr/hyprland.lua (append)
+  + 
+  + -- ferry: loads ferry.lua (`ferry setup --undo` removes this line)
+  + require("hypr.ferry")
+  apply? yes (--yes)
+  backup: ~/.config/hypr/hyprland.lua.ferry-bak.1800000000
+  done: Hyprland loaded it
+
+[4/7] go binds (the go chord and an arrow key move to the machine on that side)
+  will do:
+  --- ~/.config/hypr/ferry.lua (append)
+  + 
+  + -- ferry:begin go-binds
+  + -- Go binds: move the keyboard and mouse to the machine on that side.
+  + hl.bind("SUPER + CTRL + ALT + LEFT", hl.dsp.exec_cmd("ferry go left"), { description = "ferry: go left" })
+  + hl.bind("SUPER + CTRL + ALT + RIGHT", hl.dsp.exec_cmd("ferry go right"), { description = "ferry: go right" })
+  + hl.bind("SUPER + CTRL + ALT + UP", hl.dsp.exec_cmd("ferry go up"), { description = "ferry: go up" })
+  + hl.bind("SUPER + CTRL + ALT + DOWN", hl.dsp.exec_cmd("ferry go down"), { description = "ferry: go down" })
+  + -- ferry:end go-binds
+  apply? yes (--yes)
+  backup: ~/.config/hypr/ferry.lua.ferry-bak.1800000000
+  done: Hyprland loaded it
+
+[5/7] release_pressed_on_close (clients see key-ups when a virtual keyboard dies)
+  will do:
+  --- ~/.config/hypr/ferry.lua (append)
+  + 
+  + -- ferry:begin release-pressed-on-close
+  + -- Clients see key-ups when a virtual keyboard dies.
+  + hl.config({ input = { virtualkeyboard = { release_pressed_on_close = true } } })
+  + -- ferry:end release-pressed-on-close
+  apply? yes (--yes)
+  backup: ~/.config/hypr/ferry.lua.ferry-bak.1800000000.1
+  done: Hyprland loaded it
+
+[6/7] input-capture permission (only when ecosystem:enforce_permissions is on)
+  skipped: ecosystem:enforce_permissions is off
+
+[7/7] firewall (ufw)
+  ufw is on and no peer has connected in yet.
+  will do (needs sudo; only if a peer must dial this machine):
+  $ sudo ufw allow 4243/udp comment ferry
+  sudo is never run by --yes
+  skipped: not run; run `sudo ufw allow 4243/udp comment ferry` yourself if a peer must reach this machine
+
+5 done, 2 skipped, 0 declined, 0 not applied, 0 printed only, 0 failed
+
+[doctor]
+FAIL  daemon         ferryd is not running
+                     fix: systemctl --user start ferryd   (or `ferry setup`)
+PASS  unit           ferryd.service enabled, active
+WARN  xdph           xdg-desktop-portal-hyprland not found through pacman
+                     fix: pacman -S xdg-desktop-portal-hyprland   (skip this if another package manager installed it)
+PASS  key files      none yet: ferryd creates them on its first start
+PASS  plugin         linked, on the bar (right)
+WARN  notifications  cannot ask the session bus (busctl failed)
+WARN  firewall       ufw is on, and ferryd is not running to say whether a peer has connected in
+                     fix: sudo ufw allow 4243/udp   (only if a peer must dial this machine)
+3 warnings, 1 failure

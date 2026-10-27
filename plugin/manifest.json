@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "ferry.bar",
+  "name": "ferry",
+  "version": "0.1.0",
+  "author": "ferry",
+  "license": "MIT",
+  "description": "Share one keyboard and mouse between your machines. Shows where your pointer is, and opens the controls to pair, arrange and tune.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "FerryWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "ferry",
+    "description": "Where your keyboard and mouse are, at a glance: this machine, or another one you reached across the screen edge. Click for peers, lock and the way into Arrange and Pair.",
+    "category": "System",
+    "defaultSection": "right",
+    "aliases": ["ferry", "kvm", "keyboard", "mouse", "share"],
+    "allowMultiple": false,
+    "defaults": {
+      "showPeerName": true
+    },
+    "schema": [
+      {
+        "key": "showPeerName",
+        "type": "boolean",
+        "label": "Show the peer's name",
+        "description": "Write the other machine's name next to the icon while your input is on it, or it is controlling this one. Off keeps the name in the tooltip.",
+        "defaultValue": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "ferry-hypr-ipc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rustix = { version = "=1.1.5", features = ["process", "net"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+thiserror = "=2.0.21"
+tracing = "=0.1.44"
+
+[dev-dependencies]
+proptest = "=1.11.0"
+tempfile = "=3.27.0"

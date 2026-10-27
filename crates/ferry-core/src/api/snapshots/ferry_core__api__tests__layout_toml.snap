@@ -1,0 +1,59 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: text
+---
+[revision]
+counter = 1
+peer = "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"
+
+[[origin]]
+peer = "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"
+x = 0
+y = 0
+
+[[origin]]
+peer = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+x = 277
+y = 1080
+
+[[known]]
+peer = "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"
+
+[[known.monitor]]
+name = "HDMI-A-1"
+description = "test HDMI-A-1"
+scale = 1.0
+transform = 0
+
+[known.monitor.rect]
+x = 0
+y = 0
+w = 1920
+h = 1080
+
+[[known.monitor]]
+name = "DVI-D-1"
+description = "test DVI-D-1"
+scale = 1.0
+transform = 0
+
+[known.monitor.rect]
+x = 1920
+y = 0
+w = 1920
+h = 1080
+
+[[known]]
+peer = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+
+[[known.monitor]]
+name = "eDP-1"
+description = "test eDP-1"
+scale = 1.0
+transform = 0
+
+[known.monitor.rect]
+x = 0
+y = 0
+w = 1366
+h = 768

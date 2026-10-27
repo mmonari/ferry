@@ -1,0 +1,22 @@
+---
+source: crates/ferry-cli/tests/doctor.rs
+expression: out
+---
+PASS  daemon                    ferryd 0.1.0, api 1
+PASS  unit                      ferryd.service enabled, active
+PASS  hyprland                  hyprland ok
+PASS  xdph                      xdg-desktop-portal-hyprland 1.4.1-2
+PASS  capture                   capture ok
+PASS  globals                   globals ok
+PASS  barriers                  barriers ok
+PASS  escape bind               escape bind ok
+PASS  release_pressed_on_close  release_pressed_on_close ok
+PASS  key files                 none yet: ferryd creates them on its first start
+PASS  plugin                    linked, on the bar (right)
+PASS  notifications             org.freedesktop.Notifications has an owner
+PASS  port                      port ok
+PASS  firewall                  firewall ok
+PASS  lock check                lock check ok
+PASS  peer lap                  peer lap ok
+PASS  lock to this machine      lock to this machine ok
+0 warnings, 0 failures

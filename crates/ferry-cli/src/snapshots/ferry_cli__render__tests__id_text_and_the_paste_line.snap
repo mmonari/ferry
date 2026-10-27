@@ -1,0 +1,11 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: id(&r)
+---
+desk
+  fingerprint  4444444444444444444444444444444444444444444444444444444444444444
+  port         4243/udp
+  addresses    192.0.2.111, 10.0.0.2
+
+To pair, run this on the other machine:
+  ferry trust 4444444444444444444444444444444444444444444444444444444444444444 --name desk --addr 192.0.2.111:4243

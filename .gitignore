@@ -1,0 +1,21 @@
+# Local-only notes, never committed
+/docs/lessons-learned/
+/docs/client/
+
+# Rust build output (from M1)
+/target/
+**/*.rs.bk
+
+# Tooling scratch
+.playwright-mcp/
+.claude/settings.local.json
+*.swp
+
+# Python bytecode from the drill analyzers
+__pycache__/
+*.pyc
+
+# makepkg output (pkgbuild/PKGBUILD builds from this checkout)
+/pkgbuild/pkg/
+/pkgbuild/src/
+/pkgbuild/*.pkg.tar.*

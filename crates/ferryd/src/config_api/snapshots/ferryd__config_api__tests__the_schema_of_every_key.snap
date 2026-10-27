@@ -1,0 +1,167 @@
+---
+source: crates/ferryd/src/config_api/tests.rs
+expression: schema()
+---
+{
+  "keys": [
+    {
+      "key": "peer.name",
+      "type": "name",
+      "default": "",
+      "applies": "restart",
+      "doc": "This machine's name on the other machines and in the layout. Empty uses the hostname"
+    },
+    {
+      "key": "peer.port",
+      "type": "int",
+      "default": 4243,
+      "min": 0,
+      "max": 65535,
+      "applies": "restart",
+      "doc": "The UDP port the other machines connect to; open it in the firewall. 0 lets the kernel pick one"
+    },
+    {
+      "key": "crossing.edge_resistance_px",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 200,
+      "unit": "px",
+      "applies": "live",
+      "doc": "How far to push into an edge before the pointer crosses. 0 crosses on contact"
+    },
+    {
+      "key": "crossing.edge_dwell_ms",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 65535,
+      "unit": "ms",
+      "slider_max": 1000,
+      "applies": "live",
+      "doc": "How long to push into an edge before the pointer crosses. 0 turns the delay off"
+    },
+    {
+      "key": "crossing.corner_dead_zone_px",
+      "type": "int",
+      "default": 8,
+      "min": 0,
+      "max": 200,
+      "unit": "px",
+      "applies": "live",
+      "doc": "The stretch at each end of an edge link that acts as a wall"
+    },
+    {
+      "key": "crossing.block_while_button_held",
+      "type": "bool",
+      "default": true,
+      "applies": "live",
+      "doc": "Do not cross back while a mouse button is held on the other machine, so a drag stays where it began"
+    },
+    {
+      "key": "crossing.escape_chord",
+      "type": "chord",
+      "default": "Super+Ctrl+Escape",
+      "applies": "setup",
+      "doc": "The keys that always give input back: at least two modifiers and one key. Run `ferry setup` to update the Hyprland bind"
+    },
+    {
+      "key": "crossing.go_chord",
+      "type": "chord",
+      "default": "Super+Ctrl+Alt",
+      "applies": "setup",
+      "doc": "These modifiers with an arrow key move the keyboard and mouse to the machine on that side, or back. Run `ferry setup` to update the Hyprland binds"
+    },
+    {
+      "key": "crossing.edge_glow",
+      "type": "bool",
+      "default": true,
+      "applies": "live",
+      "doc": "Light the edge on both machines for a moment when the pointer crosses it, in each machine's theme colour"
+    },
+    {
+      "key": "input.capture",
+      "type": "enum",
+      "default": "auto",
+      "choices": [
+        "auto",
+        "portal",
+        "direct",
+        "layer-shell",
+        "off"
+      ],
+      "applies": "restart",
+      "doc": "How input is captured on this machine. off makes it a target only"
+    },
+    {
+      "key": "input.emulation",
+      "type": "enum",
+      "default": "wayland",
+      "choices": [
+        "wayland"
+      ],
+      "applies": "restart",
+      "doc": "How input is injected when this machine is a target"
+    },
+    {
+      "key": "input.scroll_invert",
+      "type": "bool",
+      "default": false,
+      "applies": "restart",
+      "doc": "Invert the scroll direction on targets",
+      "available": false
+    },
+    {
+      "key": "clipboard.enabled",
+      "type": "bool",
+      "default": true,
+      "applies": "restart",
+      "doc": "Share the clipboard between the machines",
+      "available": false
+    },
+    {
+      "key": "clipboard.max_bytes",
+      "type": "int",
+      "default": 33554432,
+      "min": 0,
+      "max": 9223372036854775807,
+      "unit": "bytes",
+      "applies": "restart",
+      "doc": "The largest clipboard item that is shared",
+      "available": false
+    },
+    {
+      "key": "discovery.mdns",
+      "type": "bool",
+      "default": true,
+      "applies": "restart",
+      "doc": "Look for other machines on the network",
+      "available": false
+    },
+    {
+      "key": "discovery.advertise",
+      "type": "bool",
+      "default": true,
+      "applies": "restart",
+      "doc": "Let other machines on the network find this one",
+      "available": false
+    },
+    {
+      "key": "safety.lock_check_budget_ms",
+      "type": "int",
+      "default": 50,
+      "min": 50,
+      "max": 100,
+      "unit": "ms",
+      "applies": "restart",
+      "doc": "How long the screen-lock check may take before a crossing counts the screen as locked. A slow machine may need more"
+    },
+    {
+      "key": "notify.enabled",
+      "type": "bool",
+      "default": true,
+      "applies": "live",
+      "doc": "Show ferry's notifications on the desktop: the pairing code, a machine lost or back, a replaced layout, a problem that needs you. Off, they still reach the bar plugin"
+    }
+  ]
+}

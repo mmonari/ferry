@@ -1,0 +1,14 @@
+---
+source: crates/ferryd/src/trust_store.rs
+expression: "std::fs::read_to_string(&path).unwrap().replace(&fp(1).to_string(),\n\"<fp1>\").replace(&fp(2).to_string(), \"<fp2>\")"
+---
+[[peer]]
+fingerprint = "<fp1>"
+name = "laptop"
+addr = "192.0.2.11"
+paired = "manual"
+
+[[peer]]
+fingerprint = "<fp2>"
+name = "lap"
+paired = "manual"

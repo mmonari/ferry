@@ -1,0 +1,11 @@
+---
+source: crates/ferry-cli/tests/pair.rs
+expression: "masked(&out_b, &keys, &ports)"
+---
+Accepting one pairing request for 120 s on UDP <port>. Ctrl+C stops.
+Request from desktop at 127.0.0.1, key <key-a>
+
+    Pairing code   NNN NNN
+
+Confirm only if desktop shows this same code. Same code? [y/N] y
+Paired with desktop (<key-a>).

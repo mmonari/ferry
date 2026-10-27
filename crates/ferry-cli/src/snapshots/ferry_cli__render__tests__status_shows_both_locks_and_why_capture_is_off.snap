@@ -1,0 +1,21 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: status(&s)
+---
+desk (this machine)
+  fingerprint  4444444444444444444444444444444444444444444444444444444444444444
+  state        ready
+  port         4243/udp
+  role         idle
+  capture      portal (idle, 0 barriers, off: locked to this machine)
+  lock         on: this machine keeps the pointer
+  screen       unlocked
+  escape       Super+Ctrl+Escape
+
+Peers
+  NAME    STATE      ADDRESS          RTT     PROTO  LAST SEEN  LOCK
+  laptop  connected  192.0.2.11:4243  412 us  1.0    now        locked
+  lap     refused    -                -       -      -          -
+  lap: peer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa does not trust this machine
+
+Last release: escape_chord, 12 s ago

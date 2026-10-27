@@ -1,0 +1,48 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: s
+---
+request
+{"id":7,"method":"pair.accept"}
+request
+{"id":7,"method":"pair.start","params":{"addr":"192.0.2.11","name":"laptop"}}
+request
+{"id":7,"method":"pair.answer","params":{"match":true}}
+request
+{"id":7,"method":"pair.cancel"}
+request
+{"id":7,"method":"peers"}
+request
+{"id":7,"method":"unpair","params":{"peer":"laptop"}}
+pair.accept
+{"id":8,"result":{"expires_ms":120000}}
+event
+{"event":"pairing","data":{"stage":"connecting","role":"dialer","expires_ms":120000}}
+event
+{"event":"pairing","data":{"stage":"code","role":"acceptor","peer":{"name":"desktop","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","addr":"192.0.2.111:4243"},"code":"418207","expires_ms":118200}}
+event
+{"event":"pairing","data":{"stage":"paired","role":"acceptor","peer":{"name":"desktop","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","addr":"192.0.2.111:4243"},"expires_ms":0}}
+event
+{"event":"pairing","data":{"stage":"failed","role":"dialer","peer":{"name":"desktop","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","addr":"192.0.2.111:4243"},"expires_ms":95000,"reason":"rejected","message":"cancelled: codes differ"}}
+event
+{"event":"pairing","data":{"stage":"failed","role":"dialer","peer":{"name":"desktop","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","addr":"192.0.2.111:4243"},"expires_ms":94000,"reason":"cancelled","message":"cancelled","cancelled_by":"local"}}
+event
+{"event":"pairing","data":{"stage":"failed","role":"acceptor","peer":{"name":"desktop","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0","addr":"192.0.2.111:4243"},"expires_ms":93000,"reason":"cancelled","message":"cancelled","cancelled_by":"peer"}}
+event
+{"event":"pairing","data":{"stage":"closed","role":"acceptor","expires_ms":92000,"reason":"cancelled","message":"pairing window closed: cancelled","cancelled_by":"local"}}
+event
+{"event":"pairing","data":{"stage":"failed","role":"dialer","expires_ms":119000,"reason":"not_accepting","message":"192.0.2.11 is not accepting pairing"}}
+status.pairing
+{"role":"acceptor","stage":"listening","expires_ms":61000}
+peers
+{"id":9,"result":{"peers":[{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","addr":"192.0.2.11:4243","last_seen":"2026-10-18T09:12:03Z","paired":"sas","state":"connected","locked":false}]}}
+error
+{"id":9,"error":{"code":"pairing_not_accepting","message":"…"}}
+error
+{"id":9,"error":{"code":"pairing_busy","message":"…"}}
+error
+{"id":9,"error":{"code":"pairing_expired","message":"…"}}
+error
+{"id":9,"error":{"code":"no_pairing","message":"…"}}
+error
+{"id":9,"error":{"code":"peer_unreachable","message":"…"}}

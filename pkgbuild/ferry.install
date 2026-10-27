@@ -1,0 +1,48 @@
+# pacman install hooks for ferry. A package cannot touch $HOME, so the per-user steps (the
+# plugin, the user unit, the Hyprland snippet, the firewall rule) are `ferry setup`'s.
+
+post_install() {
+  cat <<'MSG'
+
+==> ferry is installed. As your own user (not root), run:
+
+      ferry setup
+
+    It links the bar plugin and puts its widget on the bar, enables ferryd.service, adds the
+    escape bind to Hyprland and offers `ufw allow ferry`, asking before each step. `ferry doctor`
+    shows what is still missing.
+    (Coming from a build you ran from a directory? docs/packaging.md in the repository has the
+    migration steps.)
+MSG
+}
+
+post_upgrade() {
+  cat <<'MSG'
+
+==> ferry is upgraded. The ferryd that is running is still the old one. As your own user, run:
+
+      systemctl --user restart ferryd
+
+    (and `ferry setup` if the release notes ask for it). Upgrade every machine you pair with to the
+    same version: mixed versions are not tested yet.
+MSG
+}
+
+post_remove() {
+  cat <<'MSG'
+
+==> ferry is removed. If you ran `ferry setup`, ferryd may still be enabled for your user. As your
+    own user, run:
+
+      systemctl --user disable --now ferryd
+      systemctl --user daemon-reload
+      rm ~/.config/omarchy/plugins/ferry.bar
+
+    and take the `ferry.bar` entry out of bar.layout in ~/.config/omarchy/shell.json (the shell
+    can no longer disable a plugin it does not know), the `require("hypr.ferry")` line from
+    ~/.config/hypr/hyprland.lua, then ~/.config/hypr/ferry.lua and, if you allowed it,
+    `sudo ufw delete allow ferry`.
+    Next time, run `ferry setup --undo` before removing: it does all of this for you.
+    Your keys, config and state stay in ~/.config/ferry, ~/.local/state/ferry and ~/.local/share/ferry.
+MSG
+}

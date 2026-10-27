@@ -1,0 +1,13 @@
+---
+source: crates/ferry-cli/tests/doctor.rs
+expression: sb.tmp_normalised(&out)
+---
+FAIL  daemon         ferryd is not running
+                     fix: systemctl --user start ferryd   (or `ferry setup`)
+PASS  unit           ferryd.service enabled, active
+PASS  xdph           xdg-desktop-portal-hyprland 1.4.1-2
+PASS  key files      none yet: ferryd creates them on its first start
+PASS  plugin         linked, on the bar (right)
+PASS  notifications  org.freedesktop.Notifications has an owner
+PASS  firewall       ufw is off
+0 warnings, 1 failure

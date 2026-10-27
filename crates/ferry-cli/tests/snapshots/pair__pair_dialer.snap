@@ -1,0 +1,12 @@
+---
+source: crates/ferry-cli/tests/pair.rs
+expression: "masked(&out_a, &keys, &ports)"
+---
+Asking 127.0.0.1:<port>...
+laptop answered, key <key-b>
+
+    Pairing code   NNN NNN
+
+Confirm only if laptop shows this same code. Same code? [y/N] y
+Waiting for laptop...
+Paired with laptop (<key-b>). Connecting... connected.

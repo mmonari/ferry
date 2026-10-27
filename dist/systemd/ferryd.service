@@ -1,0 +1,29 @@
+# ferry daemon: one keyboard and mouse across Omarchy machines.
+#
+# Packaged copy: /usr/lib/systemd/user/ferryd.service. `ferry setup` writes the same file to
+# ~/.config/systemd/user/ferryd.service for a build without a package, with ExecStart= set to
+# the ferryd next to the ferry that ran setup.
+[Unit]
+Description=ferry daemon: one keyboard and mouse across Omarchy machines
+PartOf=graphical-session.target
+After=graphical-session.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/ferryd
+Restart=on-failure
+RestartSec=200ms
+RestartSteps=5
+RestartMaxDelaySec=10s
+WatchdogSec=2s
+TimeoutStartSec=10s
+TimeoutStopSec=3s
+NoNewPrivileges=yes
+LimitCORE=0
+UMask=0077
+SyslogIdentifier=ferryd
+
+[Install]
+WantedBy=graphical-session.target

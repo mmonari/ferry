@@ -1,0 +1,28 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: text
+---
+desk (this machine)
+  fingerprint  4444444444444444444444444444444444444444444444444444444444444444
+  state        attention
+  port         4243/udp
+  role         idle
+  capture      portal (armed, 1 barrier)
+  lock         off
+  screen       unlocked
+  escape       Super+Ctrl+Escape
+
+Attention
+  lap cannot connect: version mismatch: 1.0 vs 2.0
+    hint: `ferry doctor` has the details. After a key change or if it unpaired this machine, `ferry unpair lap` and pair again; after a version mismatch, update the older ferry
+  config.toml: unknown key peer.nmae\r\u{1b}[2K
+
+Peers
+  NAME    STATE       ADDRESS          RTT     PROTO  LAST SEEN
+  laptop  connected   192.0.2.11:4243  412 us  1.0    now
+  lap     refused     -                -       -      -
+  tab     connecting  -                2.6 ms  -      -
+  lap: peer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa does not trust this machine
+
+Last release: escape_chord, 12 s ago
+Counters: releases=2

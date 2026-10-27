@@ -1,0 +1,59 @@
+[package]
+name = "ferryd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "ferry's daemon: the control plane (socket API, state files) and the four threads that join capture, network and injection"
+
+[lints]
+workspace = true
+
+[lib]
+name = "ferryd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ferryd"
+path = "src/main.rs"
+
+[dependencies]
+bytes = "=1.12.1"
+calloop = "=0.14.5"
+ferry-capture = { path = "../ferry-capture" }
+ferry-core = { path = "../ferry-core" }
+ferry-hypr-ipc = { path = "../ferry-hypr-ipc" }
+ferry-inject = { path = "../ferry-inject" }
+ferry-net = { path = "../ferry-net" }
+ferry-wl = { path = "../ferry-wl" }
+# Only `StreamExt::next` for the notification daemon's signal streams; ferry-capture already
+# builds it with its defaults, so this adds nothing to the tree.
+futures-util = { version = "=0.3.31", default-features = false, features = ["std"] }
+nix = { version = "=0.31.3", default-features = false, features = ["net"] }
+ring = "=0.17.14"
+rustix = { version = "=1.1.5", features = ["fs", "process", "system", "time"] }
+sd-notify = "=0.5.0"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+sha2 = "=0.11.1"
+tempfile = "=3.27.0"
+thiserror = "=2.0.21"
+tokio = { version = "=1.53.3", features = ["rt", "macros", "sync", "time", "net", "io-util", "signal"] }
+toml = "=1.1.8"
+# config.set edits config.toml in place and keeps the user's comments and order. Already in the
+# lock through proc-macro-crate (zbus's macros); `parse` and `display` are all it needs here.
+toml_edit = { version = "=0.25.17", default-features = false, features = ["parse", "display"] }
+# Per-event trace! (every key, every frame) is compiled out of release builds;
+# feature unification carries it to the other crates.
+tracing = { version = "=0.1.44", features = ["release_max_level_debug"] }
+tracing-subscriber = { version = "=0.3.23", default-features = false, features = ["fmt", "std"] }
+# The notification client (`org.freedesktop.Notifications`). The version and the
+# `tokio` feature are the ones ashpd already pulls in through ferry-capture, so the tree gains
+# no new crate.
+zbus = { version = "=5.19.0", default-features = false, features = ["tokio"] }
+
+[dev-dependencies]
+proptest = "=1.11.0"
+tokio = { version = "=1.53.3", features = ["rt-multi-thread", "io-std"] }
+insta = { version = "=1.48.0", features = ["json"] }

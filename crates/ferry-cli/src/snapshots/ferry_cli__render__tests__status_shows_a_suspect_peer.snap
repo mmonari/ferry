@@ -1,0 +1,21 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: status(&s)
+---
+desk (this machine)
+  fingerprint  4444444444444444444444444444444444444444444444444444444444444444
+  state        ready
+  port         4243/udp
+  role         idle
+  capture      portal (armed, 1 barrier)
+  lock         off
+  screen       unlocked
+  escape       Super+Ctrl+Escape
+
+Peers
+  NAME    STATE                ADDRESS          RTT     PROTO  LAST SEEN
+  laptop  connected (suspect)  192.0.2.11:4243  412 us  1.0    now
+  laptop: suspect: released for silence and not heard since; its edges are walls until it answers a ping
+
+Last release: silence, 1 s ago
+Counters: releases=2

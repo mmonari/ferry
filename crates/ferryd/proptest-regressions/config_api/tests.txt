@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e2db7f000a66957b9f241c54c37f567de63e258a6e35de5bb3235787e1e27c2f # shrinks to edits = [(Key { key: "crossing.go_chord", field: Chord { kind: Go, get: 0x56422199abe0, set: 0x56422199ac20 }, applies: Setup, available: true, unit: None, doc: "These modifiers with an arrow key move the keyboard and mouse to the machine on that side, or back. Run `ferry setup` to update the Hyprland binds" }, String("Super+Ctrl+Escape"))], start = ""
+cc 940afd3d745731b14080c25989fb6285eec5ab9f1d359aa167cdc8fc6b1efd0b # shrinks to edits = [(Key { key: "crossing.go_chord", field: Chord { kind: Go, get: 0x56422199abe0, set: 0x56422199ac20 }, applies: Setup, available: true, unit: None, doc: "These modifiers with an arrow key move the keyboard and mouse to the machine on that side, or back. Run `ferry setup` to update the Hyprland binds" }, String("Super+Ctrl+Escape"))]

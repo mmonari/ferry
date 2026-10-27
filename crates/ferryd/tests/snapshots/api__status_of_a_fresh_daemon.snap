@@ -1,0 +1,45 @@
+---
+source: crates/ferryd/tests/api.rs
+expression: masked
+---
+{
+  "api": 1,
+  "attention": [],
+  "capture": {
+    "backend": "off",
+    "barriers": 0,
+    "failed_barriers": [],
+    "gate": "off"
+  },
+  "counters": {
+    "enters": 0,
+    "events_superseded": 0,
+    "handshakes_refused": 0,
+    "keymap_swaps": 0,
+    "nonfinite_peer_values": 0,
+    "orphan_releases": 0,
+    "pair_attempts": 0,
+    "pair_failures": 0,
+    "pairing_refused": 0,
+    "refused_enters": 0,
+    "snapshot_releases": 0,
+    "stale_datagrams": 0,
+    "stale_frames": 0,
+    "takeover_suspects": 0,
+    "takeovers": 0,
+    "watchdog_releases": 0
+  },
+  "escape_chord": "Super+Ctrl+Escape",
+  "locked": false,
+  "me": {
+    "fingerprint": "<fp>",
+    "name": "desk"
+  },
+  "peers": [],
+  "port": "<port>",
+  "role": "idle",
+  "screen_locked": null,
+  "summary": {
+    "state": "idle"
+  }
+}

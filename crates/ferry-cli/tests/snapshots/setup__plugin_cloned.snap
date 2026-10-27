@@ -1,0 +1,19 @@
+---
+source: crates/ferry-cli/tests/setup.rs
+expression: plugin_step(&out)
+---
+[1/7] bar plugin (ferry.bar: the widget and panels in omarchy-shell)
+  will do:
+  $ ln -s <tmp>/usr/share/ferry/plugin ~/.config/omarchy/plugins/ferry.bar
+  $ omarchy-shell -q shell rescanPlugins
+  --- ~/.config/omarchy/shell.json (add the widget to the bar: right, after my.tray)
+              "id": "my.tray"
+            },
+  +         {
+  +           "id": "ferry.bar"
+  +         },
+            {
+              "id": "my.artisan"
+  apply? yes (--yes)
+  backup: ~/.config/omarchy/shell.json.ferry-bak.1800000000
+  done: linked ferry.bar and put the widget on the bar (right, after my.tray)

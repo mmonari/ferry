@@ -1,0 +1,19 @@
+---
+source: crates/ferry-cli/tests/setup.rs
+expression: plugin_step(&out)
+---
+[1/7] bar plugin (ferry.bar: the widget and panels in omarchy-shell)
+  will do:
+  --- ~/.config/omarchy/shell.json (take the widget off the bar)
+              "id": "omarchy.tray"
+            },
+  -         {
+  -           "id": "ferry.bar"
+  -         },
+            {
+              "id": "omarchy.keyboard-layout"
+  $ rm ~/.config/omarchy/plugins/ferry.bar
+  $ omarchy-shell -q shell rescanPlugins
+  apply? yes (--yes)
+  backup: ~/.config/omarchy/shell.json.ferry-bak.1800000000.1
+  done: took the widget off the bar and removed the link

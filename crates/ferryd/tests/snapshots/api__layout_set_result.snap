@@ -1,0 +1,39 @@
+---
+source: crates/ferryd/tests/api.rs
+expression: "mask(&json!({\"revision\": r[\"revision\"], \"peer\": r[\"peers\"][1]}),\n&[(&d.fingerprint().to_string(), \"<fp>\")])"
+---
+{
+  "peer": {
+    "bounds": {
+      "h": 768,
+      "w": 1366,
+      "x": 0,
+      "y": 1080
+    },
+    "fingerprint": "9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c",
+    "monitors": [
+      {
+        "description": "",
+        "h": 768,
+        "name": "eDP-1",
+        "scale": 1.0,
+        "transform": 0,
+        "w": 1366,
+        "x": 0,
+        "y": 1080
+      }
+    ],
+    "name": "a",
+    "online": false,
+    "origin": [
+      0,
+      1080
+    ],
+    "self": false,
+    "trusted": true
+  },
+  "revision": {
+    "counter": 1,
+    "peer": "<fp>"
+  }
+}

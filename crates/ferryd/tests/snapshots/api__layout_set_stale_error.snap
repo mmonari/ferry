@@ -1,0 +1,9 @@
+---
+source: crates/ferryd/tests/api.rs
+expression: e
+---
+{
+  "code": "stale_layout",
+  "hint": "read the layout again with layout.get, then apply your change on top of it",
+  "message": "the layout changed (rev 2 by desk)"
+}

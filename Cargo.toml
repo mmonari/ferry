@@ -1,0 +1,29 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+# The one version source: every shipping crate takes it, and pkgbuild/PKGBUILD reads it.
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+publish = false
+
+# Crates opt in with `[lints] workspace = true`. M0 spikes may opt out.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# A small, tuned set that locks in the baseline (no unwrap, no stray output or
+# placeholder in shipping code). Not `pedantic`: 605 production findings, mostly noise.
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+
+[profile.release]
+debug = "line-tables-only"

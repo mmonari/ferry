@@ -1,0 +1,19 @@
+---
+source: crates/ferry-core/src/pair/tests.rs
+expression: s
+---
+A d0d0:d0d0:d0d0:d0d0 B 0b0b:0b0b:0b0b:0b0b n_A 01 n_B 02
+  code 708 084
+  commit 454edeb0c78c74220f5ca4f1638e02736dc5cb9778279547d0ba4748fb852f2b
+A 0b0b:0b0b:0b0b:0b0b B d0d0:d0d0:d0d0:d0d0 n_A 01 n_B 02
+  code 708 084
+  commit 6b63b5a9c408b50df928948dc06a30ff96d243542522ce71ef795ac605a46b40
+A d0d0:d0d0:d0d0:d0d0 B 0b0b:0b0b:0b0b:0b0b n_A 02 n_B 01
+  code 210 636
+  commit a76957c7fd04d150ca16643121c347fd755f2d2e3b2d2ffa08504f849814c478
+A 0000:0000:0000:0000 B ffff:ffff:ffff:ffff n_A 00 n_B 00
+  code 748 252
+  commit 66526eca7d5c7c17e0a15b81922294cafefa24396eda69adb9b67f5309b64aa2
+A ca97:8112:ca1b:bdca B 3e23:e816:0039:594a n_A 5a n_B a5
+  code 732 981
+  commit 75155dc2ea512ab4c6c03ffed59a28f4d6329909637de8f4cc0ea9109085ddee

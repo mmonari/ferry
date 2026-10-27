@@ -1,0 +1,25 @@
+[package]
+name = "ferry-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "ferry's pure core: layout geometry, edge links, crossing machines, held set, wire codec, socket-API types"
+
+[lints]
+workspace = true
+
+# The core rule: no Wayland, D-Bus, network, filesystem,
+# clock or thread dependency. Time enters as `Micros`, effects leave as actions.
+[dependencies]
+minicbor = { version = "=2.3.0", features = ["std", "derive"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+sha2 = "=0.11.1"
+thiserror = "=2.0.21"
+
+[dev-dependencies]
+insta = "=1.48.0"
+proptest = "=1.11.0"
+toml = "=1.1.8"

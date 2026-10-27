@@ -1,0 +1,81 @@
+# Maintainer: the ferry contributors
+#
+# Builds the checkout this file sits in, in the shape of gliff's pkgbuild/ (MIT, credited in
+# NOTICE; ADR 0010 and 0011): `bin/install` runs
+# `makepkg -fsi` here. There is no source tarball; pkgver is the one version in the repository,
+# `[workspace.package] version` of the top Cargo.toml.
+#
+# The omarchy-shell plugin ships as a folder, /usr/share/ferry/plugin/ (manifest.json and QML), and
+# the launcher entry as /usr/share/applications/ferry.desktop. A package cannot touch
+# $HOME, so `ferry setup` links the folder into ~/.config/omarchy/plugins/ferry.bar and puts the
+# widget on the bar. scripts/pkg/expected-files.sh is the list of what the package holds;
+# Scripts/pkg/dry-package.sh runs package() below without building anything.
+#
+# arch: x86_64 only, and plain x86-64 (no -march/target-cpu=native; the netbook is a Celeron
+# N3060, x86-64-v2). The OPR fast ring will also need aarch64; nothing here has been
+# built or tested there.
+
+pkgname=ferry
+pkgver=$(awk '/^\[/ { in_ws = ($0 == "[workspace.package]") } in_ws && /^version = / { gsub(/"/, "", $3); print $3; exit }' "$startdir/../Cargo.toml")
+pkgrel=1
+pkgdesc="One keyboard and mouse across Omarchy machines (Hyprland, local network)"
+arch=('x86_64')
+# url: none until the repository is public
+license=('MIT')
+install='ferry.install'
+options=('!debug' '!lto')
+depends=('gcc-libs' 'glibc' 'libxkbcommon' 'systemd')
+makedepends=('cargo')
+optdepends=('ufw: `ferry setup` offers `ufw allow ferry` (Omarchy enables ufw with incoming denied)'
+            'xdg-desktop-portal-hyprland>=1.4.1: the InputCapture portal, the default capture backend')
+backup=('etc/ufw/applications.d/ferry')
+source=()
+sha256sums=()
+
+_crates=(-p ferryd -p ferry-cli)
+
+prepare() {
+  [ -n "$pkgver" ] || { echo "pkgver: no [workspace.package] version in Cargo.toml" >&2; return 1; }
+  cd "$startdir/.."
+  export CARGO_TARGET_DIR="$srcdir/target"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+  cd "$startdir/.."
+  export CARGO_TARGET_DIR="$srcdir/target"
+  # makepkg's RUSTFLAGS (rust.conf) are kept; nothing here sets a target CPU.
+  cargo build --frozen --release "${_crates[@]}"
+}
+
+check() {
+  cd "$startdir/.."
+  export CARGO_TARGET_DIR="$srcdir/target"
+  # One version source: a crate that sets its own version would make the package lie.
+  for bin in ferryd ferry; do
+    [ "$("$srcdir/target/release/$bin" --version)" = "$bin $pkgver" ] ||
+      { echo "$bin --version is not '$bin $pkgver'" >&2; return 1; }
+  done
+  # ADR 0011 (the OPR recipe): the tests need no compositor. e2e drills are scripts/m1/.
+  cargo test --frozen --release
+}
+
+package() {
+  cd "$startdir/.."
+  local t="$srcdir/target/release"
+
+  install -Dm755 "$t/ferryd" "$pkgdir/usr/bin/ferryd"
+  install -Dm755 "$t/ferry" "$pkgdir/usr/bin/ferry"
+  install -Dm644 dist/systemd/ferryd.service "$pkgdir/usr/lib/systemd/user/ferryd.service"
+  # `ferry setup` looks here first (crates/ferry-cli/src/setup/mod.rs `ufw_profiles`).
+  install -Dm644 dist/ufw/ferry "$pkgdir/etc/ufw/applications.d/ferry"
+  # The plugin folder, as it is in the checkout but for the developer README: root-owned files and
+  # no symlink inside it, which `omarchy plugin validate` refuses.
+  local f
+  while IFS= read -r -d '' f; do
+    install -Dm644 "$f" "$pkgdir/usr/share/ferry/$f"
+  done < <(find plugin -type f ! -name README.md -print0)
+  install -Dm644 dist/ferry.desktop "$pkgdir/usr/share/applications/ferry.desktop"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
+}

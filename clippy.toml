@@ -1,0 +1,2 @@
+# `unwrap` is fine in tests (the failure is the assertion), not in shipping code.
+allow-unwrap-in-tests = true

@@ -1,0 +1,8 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: "config_values(&all, None)"
+---
+crossing.edge_resistance_px  40
+input.scroll_invert          true
+peer.name                    ""
+peer.port                    4300  (saved; applies after a restart of ferryd)

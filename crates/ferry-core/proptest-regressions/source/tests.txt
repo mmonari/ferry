@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4a60984dd00cc490b8f14a66121f5350f8de747d2732af78de8711ef08b6149f # shrinks to steps = [(0.0, 0.0, 1), (0.0, 12.6601555703484, 1), (0.0, 0.0, 10), (0.0, 0.0, 17), (0.0, 0.0, 11), (0.0, 9.932102427597687, 15), (0.0, -1.6300274243992658, 13), (0.0, -5.374266851903345, 13), (0.0, 0.0, 1), (0.0, 11.316331267366133, 1)], x0 = 0.0
+cc 7ba0b79f052c98fc4ca7a673931467e86c001123743815e07a562f30ec1b7157 # shrinks to steps = [(13.311891895015448, 10.281742269341136, 2), (0.0, 0.0, 19), (0.0, 0.0, 13), (23.55233946889377, 0.0, 11), (25.740235466883455, 11.807053767092542, 8), (23.01442137092054, 0.0, 17), (0.0, 0.0, 5), (0.0, 0.0, 5), (0.0, 8.90411638310713, 1)], x0 = 1850.6369294033573
+cc eda335b5140b56ecbf7af1b2410e9a083103bf26d8f6d7093e6661902d516176 # shrinks to evs = [Activate(380.77498543152734), Motion(3274202822, 1122456545), Motion(0, 4259653148), Motion(687865857, 4284701500), Wait(1000)]

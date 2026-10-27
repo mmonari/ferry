@@ -1,0 +1,8 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: "format!(\"{}{}\", trusted(\"laptop\", &fp('9'), Some(\"192.0.2.11:4243\")),\ntrusted(\"lap\", &fp('a'), None))"
+---
+Trusted laptop (9999999999999999999999999999999999999999999999999999999999999999)
+ferryd is connecting to 192.0.2.11:4243; `ferry status` shows the link.
+Trusted lap (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+No address given: this machine accepts its connection and does not dial it.

@@ -1,0 +1,52 @@
+---
+source: crates/ferry-cli/tests/setup.rs
+expression: out
+---
+ferry setup
+
+[1/7] bar plugin (ferry.bar: the widget and panels in omarchy-shell)
+  skipped: ferry.bar is linked and on the bar
+
+[2/7] ferryd.service
+  ferryd.service is enabled, active.
+  will do:
+  $ systemctl --user disable --now ferryd
+  delete ~/.config/systemd/user/ferryd.service (setup wrote it for a build without a package; it shadows the packaged unit)
+  $ systemctl --user daemon-reload
+  $ systemctl --user enable --now ferryd
+  apply? yes (--yes)
+  done: ferryd.service is enabled and started
+
+[3/7] escape bind (SUPER + CTRL + ESCAPE returns input from any capture)
+  skipped: Hyprland has a bind with allow_input_capture
+
+[4/7] go binds (the go chord and an arrow key move to the machine on that side)
+  skipped: Hyprland has the four go binds
+
+[5/7] release_pressed_on_close (clients see key-ups when a virtual keyboard dies)
+  skipped: release_pressed_on_close is on
+
+[6/7] input-capture permission (only when ecosystem:enforce_permissions is on)
+  skipped: ecosystem:enforce_permissions is off
+
+[7/7] firewall (ufw)
+  ufw is on and no peer has connected in yet.
+  will do (needs sudo; only if a peer must dial this machine):
+  $ sudo ufw allow 4243/udp comment ferry
+  sudo is never run by --yes
+  skipped: not run; run `sudo ufw allow 4243/udp comment ferry` yourself if a peer must reach this machine
+
+1 done, 6 skipped, 0 declined, 0 not applied, 0 printed only, 0 failed
+
+[doctor]
+FAIL  daemon         ferryd is not running
+                     fix: systemctl --user start ferryd   (or `ferry setup`)
+PASS  unit           ferryd.service enabled, active
+WARN  xdph           xdg-desktop-portal-hyprland not found through pacman
+                     fix: pacman -S xdg-desktop-portal-hyprland   (skip this if another package manager installed it)
+PASS  key files      none yet: ferryd creates them on its first start
+PASS  plugin         linked, on the bar (right)
+WARN  notifications  cannot ask the session bus (busctl failed)
+WARN  firewall       ufw is on, and ferryd is not running to say whether a peer has connected in
+                     fix: sudo ufw allow 4243/udp   (only if a peer must dial this machine)
+3 warnings, 1 failure

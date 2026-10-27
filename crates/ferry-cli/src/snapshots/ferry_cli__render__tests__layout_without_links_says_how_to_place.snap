@@ -1,0 +1,11 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: layout(&l)
+---
+Layout revision 3 (set by desk)
+
+desk (this machine)  not placed  online
+  HDMI-A-1  1920x1080  at (0, 0) local     scale 1.25
+  DVI-D-1   1920x1080  at (1920, 0) local
+
+No links. Place a peer next to this machine with: ferry layout place <peer> --below|--above|--left-of|--right-of <anchor>

@@ -1,0 +1,8 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: peers(&r)
+---
+NAME    KEY                  ADDRESS          LAST SEEN             PAIRED   STATE      LOCK
+laptop  9c2e:41aa:0b7d:5512  192.0.2.11:4243  now                   code     connected  -
+lap     aaaa:aaaa:aaaa:aaaa  -                2026-10-17T21:40:00Z  by hand  offline    locked
+tab     bbbb:bbbb:bbbb:bbbb  -                never                 code     refused    -

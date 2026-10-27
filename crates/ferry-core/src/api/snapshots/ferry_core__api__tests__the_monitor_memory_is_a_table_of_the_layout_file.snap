@@ -1,0 +1,21 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: "&text[text.find(\"[anchor]\").expect(\"the table\")..]"
+---
+[anchor]
+x = 1920
+y = 0
+
+[[anchor.monitor]]
+key = "test HDMI-A-1"
+connector = "HDMI-A-1"
+x = 0
+y = 0
+present = false
+
+[[anchor.monitor]]
+key = "test DVI-D-1"
+connector = "DVI-D-1"
+x = 1920
+y = 0
+present = true

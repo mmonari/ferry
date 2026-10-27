@@ -1,0 +1,37 @@
+[package]
+name = "ferry-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "the `ferry` command line: a client of ferryd's socket API"
+
+[lints]
+workspace = true
+
+[lib]
+name = "ferry_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ferry"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "=4.6.7", features = ["derive"] }
+ferry-core = { path = "../ferry-core" }
+ferry-hypr-ipc = { path = "../ferry-hypr-ipc" }
+rustix = { version = "=1.1.5", features = ["process"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+thiserror = "=2.0.21"
+toml = "=1.1.8"
+
+[dev-dependencies]
+ferry-net = { path = "../ferry-net" }
+ferryd = { path = "../ferryd" }
+insta = { version = "=1.48.0" }
+proptest = "=1.11.0"
+tempfile = "=3.27.0"
+tokio = { version = "=1.53.3", features = ["rt-multi-thread", "time"] }

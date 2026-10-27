@@ -1,0 +1,36 @@
+# cargo-deny configuration. Run with `cargo deny check`.
+# ferry is MIT; every dependency must be under a permissive licence it can ship with.
+
+[graph]
+all-features = true
+
+[advisories]
+# Unmaintained crates are reported but do not fail the gate; vulnerabilities do.
+unmaintained = "workspace"
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    # minicbor and minicbor-derive (the control-lane codec).
+    "BlueOak-1.0.0",
+]
+confidence-threshold = 0.93
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Workspace path dependencies carry no version; every crate is `publish = false`.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

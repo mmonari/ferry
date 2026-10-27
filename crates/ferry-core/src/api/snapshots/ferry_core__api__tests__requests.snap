@@ -1,0 +1,17 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: s
+---
+{"id":7,"method":"status"}
+{"id":7,"method":"release"}
+{"id":7,"method":"id"}
+{"id":7,"method":"trust","params":{"fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","name":"laptop","addr":"192.0.2.11"}}
+{"id":7,"method":"layout.get"}
+{"id":7,"method":"layout.place","params":{"peer":"laptop","rel":"below","anchor":"HDMI-A-1","align":"center"}}
+{"id":7,"method":"layout.place","params":{"peer":"laptop","rel":"left_of","anchor":"desk","align":-40}}
+{"id":7,"method":"layout.place","params":{"peer":"laptop","rel":"right_of","anchor":"desk:DVI-D-1"}}
+{"id":7,"method":"layout.set","params":{"origins":[{"peer":"laptop","x":2560,"y":0}]}}
+{"id":7,"method":"layout.set","params":{"origins":[{"peer":"laptop","x":-1366,"y":156},{"peer":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","x":3840,"y":-20}],"base_rev":{"counter":14,"peer":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"}}}
+{"id":7,"method":"lock","params":{"on":true}}
+{"id":7,"method":"lock","params":{}}
+{"id":7,"method":"doctor"}

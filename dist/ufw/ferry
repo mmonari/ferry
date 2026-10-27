@@ -1,0 +1,4 @@
+[ferry]
+title=ferry
+description=ferry: one keyboard and mouse across Omarchy machines on the local network
+ports=4243/udp

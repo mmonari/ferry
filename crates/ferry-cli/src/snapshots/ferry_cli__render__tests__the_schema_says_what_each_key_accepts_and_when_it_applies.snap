@@ -1,0 +1,20 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: config_schema(&sample_schema())
+---
+peer.name
+    a name without spaces or ':' (empty: the hostname); default (empty); applies after a restart of ferryd (systemctl --user restart ferryd)
+    This machine's name
+crossing.edge_resistance_px
+    a whole number, 0 to 200 px; default 0; applies at once
+    How far to push
+crossing.escape_chord
+    a key combination, such as Super+Ctrl+Escape; default Super+Ctrl+Escape; applies at once in ferryd; `ferry setup` updates the Hyprland bind
+    The keys that give input back
+input.capture
+    one of auto, portal, off; default auto; applies after a restart of ferryd (systemctl --user restart ferryd)
+    How input is captured
+input.scroll_invert
+    true or false; default false; applies after a restart of ferryd (systemctl --user restart ferryd)
+    Invert scrolling
+    Not available yet: it arrives in a later version.

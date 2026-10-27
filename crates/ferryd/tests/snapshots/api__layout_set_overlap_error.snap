@@ -1,0 +1,9 @@
+---
+source: crates/ferryd/tests/api.rs
+expression: e
+---
+{
+  "code": "overlap",
+  "hint": "ferry layout show lists where each peer's monitors are",
+  "message": "a overlaps desk"
+}

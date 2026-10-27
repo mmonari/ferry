@@ -1,0 +1,17 @@
+---
+source: crates/ferry-cli/src/render.rs
+expression: layout(&sample_layout())
+---
+Layout revision 3 (set by desk)
+
+desk (this machine)  origin (0, 0)  online
+  HDMI-A-1  1920x1080  at (0, 0) on the plane
+  DVI-D-1   1920x1080  at (1920, 0) on the plane
+laptop  origin (277, 1080)  offline
+  eDP-1  1366x768  at (277, 1080) on the plane
+lap  not placed  offline
+  no monitors known
+
+Links
+  desk:HDMI-A-1  --bottom-->  laptop:eDP-1   span 277..1643  not live
+  laptop:eDP-1   --top-->     desk:HDMI-A-1  span 277..1643  not live

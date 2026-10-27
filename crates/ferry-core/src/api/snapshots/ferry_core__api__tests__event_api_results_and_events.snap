@@ -1,0 +1,34 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: s
+---
+subscribe
+{"id":1,"result":{"topics":["state","layout"]}}
+unsubscribe
+{"id":2,"result":{}}
+config.schema
+{"id":3,"result":{"keys":[{"key":"crossing.edge_resistance_px","type":"int","default":0,"min":0,"max":200,"unit":"px","applies":"live","doc":"Push this far into an edge before crossing"},{"key":"crossing.escape_chord","type":"chord","default":"Super+Ctrl+Escape","applies":"setup","doc":"Keys that always give input back"},{"key":"input.capture","type":"enum","default":"auto","choices":["auto","portal","off"],"applies":"restart","doc":"How input is captured"},{"key":"clipboard.enabled","type":"bool","default":true,"applies":"restart","doc":"Share the clipboard between the machines","available":false}]}}
+config.get
+{"id":4,"result":{"values":{"crossing.edge_resistance_px":40,"peer.name":"desk"}}}
+config (with a key waiting for a restart)
+{"event":"config","data":{"values":{"crossing.edge_resistance_px":40,"peer.name":"desk"},"pending":["peer.name"]}}
+config.set
+{"id":5,"result":{"key":"crossing.edge_resistance_px","value":40,"applies":"live"}}
+peer.rename
+{"id":6,"result":{"peer":{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"}}}
+event
+{"event":"state","data":{"api":1,"me":{"name":"desk","fingerprint":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"port":4243,"role":"idle","capture":{"backend":"portal","gate":"armed","barriers":1,"failed_barriers":[]},"screen_locked":false,"locked":false,"peers":[{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","state":"connected","addr":"192.0.2.11:4243","rtt_us":850,"proto":"1.0","suspect":false,"locked":false}],"last_release":{"reason":"home","ago_ms":4000,"mono_us":77000000},"counters":{"crossings":3},"pairing":{"role":"acceptor","stage":"listening","expires_ms":61000},"summary":{"state":"ready"},"attention":[],"escape_chord":"Super+Ctrl+Escape"}}
+event
+{"event":"peers","data":{"peers":[{"name":"laptop","fingerprint":"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b","paired":"sas","state":"offline","locked":false}]}}
+event
+{"event":"layout","data":{"revision":{"counter":0,"peer":"d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0"},"peers":[],"links":[]}}
+event
+{"event":"notice","data":{"kind":"peer_back","title":"laptop is back","body":"","peer":"laptop","urgency":"normal"}}
+event
+{"event":"ui","data":{"open":"pair"}}
+error
+{"id":9,"error":{"code":"unknown_key","message":"…","hint":"…"}}
+error
+{"id":9,"error":{"code":"bad_value","message":"…","hint":"…"}}
+error
+{"id":9,"error":{"code":"read_only","message":"…","hint":"…"}}

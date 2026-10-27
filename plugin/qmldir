@@ -1,0 +1,8 @@
+singleton FerryClient 1.0 FerryClient.qml
+singleton FerryUi 1.0 FerryUi.qml
+singleton Fx 1.0 Fx.qml
+FerryWidget 1.0 FerryWidget.qml
+FerryButton 1.0 FerryButton.qml
+Glyph 1.0 Glyph.qml
+PopoverContent 1.0 PopoverContent.qml
+PanelCard 1.0 PanelCard.qml

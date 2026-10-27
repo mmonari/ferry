@@ -1,0 +1,13 @@
+---
+source: crates/ferry-core/src/api/tests.rs
+expression: s
+---
+{"id":7,"method":"subscribe","params":{}}
+{"id":7,"method":"subscribe","params":{"topics":["state","layout"]}}
+{"id":7,"method":"unsubscribe"}
+{"id":7,"method":"config.schema"}
+{"id":7,"method":"config.get","params":{}}
+{"id":7,"method":"config.get","params":{"key":"peer.name"}}
+{"id":7,"method":"config.set","params":{"key":"crossing.edge_resistance_px","value":40}}
+{"id":7,"method":"config.set","params":{"key":"crossing.escape_chord","value":"Super+Alt+F12"}}
+{"id":7,"method":"peer.rename","params":{"peer":"laptop","name":"netbook"}}
