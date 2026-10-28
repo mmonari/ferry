@@ -6,12 +6,74 @@ the edge of one screen and it continues on the next machine; the keyboard follow
 ferry is built only for **Hyprland on [Omarchy](https://omarchy.org/)**. It has a Rust daemon
 (`ferryd`), a `ferry` command-line tool, and an Omarchy shell plugin for the bar.
 
-![How ferry works: the source machine's ferryd captures input at the screen edge and sends it over QUIC with mutual TLS to the other machine's ferryd, which types it through virtual devices](docs/assets/architecture.svg)
-
 > **Status: 0.1.0, an early preview.** It is used daily between two machines. Expect rough edges,
 > and run the same ferry version on every machine.
 
+## Quick start
+
+You need two or more Omarchy machines on the same network. Do steps 1 and 2 on **every** machine.
+
+**1. Build and install the package.**
+
+```bash
+git clone https://github.com/mmonari/ferry
+cd ferry
+bin/install          # builds the Arch package and installs it; pacman asks for sudo
+```
+
+On a slow machine, build once on a fast one and copy the package over. The build targets plain
+x86-64, so the same package runs on every machine:
+
+```bash
+scp pkgbuild/ferry-*.pkg.tar.zst other-machine:     # on the fast machine
+sudo pacman -U ferry-*.pkg.tar.zst                   # on the other machine
+```
+
+**2. Set up the machine**, as your own user (not root):
+
+```bash
+ferry setup          # shows each change and asks once
+ferry doctor         # every row should read PASS; each WARN or FAIL comes with its fix
+```
+
+`ferry setup` puts the ferry widget on the bar, starts `ferryd`, adds the key bindings and offers
+to open UDP port 4243 in the firewall. Add `--dry-run` to see every change first.
+
+**3. Pair two machines.** On the first machine:
+
+```bash
+ferry pair --accept
+```
+
+Then, within 120 seconds, on the second machine:
+
+```bash
+ferry pair <first-machine-host-or-ip>
+```
+
+Both screens show the same 6-digit code. Confirm on both. The Pair panel on the bar does the
+same (`ferry ui pair`). With three or more machines, pair every two of them: three machines
+take three pairings.
+
+**4. Arrange the screens** like they stand on your desk. Open the Arrange panel from the ferry
+widget on the bar (or run `ferry ui arrange`), drag the monitors so their edges touch, and apply.
+From a terminal:
+
+```bash
+ferry layout show                           # machine names and their monitors
+ferry layout place netbook --below desktop  # also --above, --left-of, --right-of
+```
+
+The anchor can also be one monitor, such as `desktop:HDMI-A-1`. `--align start|center|end` picks
+where along that edge the machine sits.
+
+**5. Try it.** Push the pointer through an edge that touches the other machine, then type. To
+come back, push the pointer back, or press **`Super+Ctrl+Escape`**: it always brings the keyboard
+and mouse home.
+
 ## What it does
+
+![How ferry works: the source machine's ferryd captures input at the screen edge and sends it over QUIC with mutual TLS to the other machine's ferryd, which types it through virtual devices](docs/assets/architecture.svg)
 
 - **Edge crossings.** Arrange the machines' monitors on one shared layout. A pointer that leaves
   through a linked edge enters the next machine at the matching point.
@@ -26,54 +88,8 @@ ferry is built only for **Hyprland on [Omarchy](https://omarchy.org/)**. It has 
 
 - Omarchy 4.5 with Hyprland 0.56.2 (Lua config) and xdg-desktop-portal-hyprland 1.4.1, the
   versions ferry is tested on.
-- Two or more machines on the same network that can reach each other on **UDP port 4243**.
-- To build: Arch's `rust` and `cargo` packages (edition 2024).
-
-## Install
-
-Build and install the Arch package from this checkout, then run setup as your own user, on
-every machine:
-
-```bash
-bin/install          # makepkg -fsi in pkgbuild/; pacman asks for sudo
-ferry setup          # shows each change and asks once; a second run changes nothing
-ferry doctor         # PASS, WARN or FAIL for each check, with a fix for each
-```
-
-`ferry setup` links the bar plugin, enables the `ferryd` user unit, adds the escape bind and the
-go chord to `~/.config/hypr/ferry.lua`, and offers to open the firewall port. `--dry-run` shows
-every change without making it. `ferry setup --undo` takes it all back.
-
-See [`docs/packaging.md`](docs/packaging.md) for upgrades, uninstalling and what the package
-holds.
-
-## Pair two machines
-
-On the machine that will accept:
-
-```bash
-ferry pair --accept
-```
-
-On the other machine, within 120 seconds:
-
-```bash
-ferry pair <host-or-ip>
-```
-
-Both machines show the same 6-digit code. Confirm on both. The Pair panel on the bar does the
-same (`ferry ui pair`).
-
-## Arrange the layout
-
-Drag the monitors in the Arrange panel (`ferry ui arrange`), or place a peer from the terminal:
-
-```bash
-ferry layout show                         # peer names and their monitors
-ferry layout place netbook --right-of desktop
-```
-
-Edges that touch become links. Push the pointer through one to cross.
+- Machines that can reach each other on **UDP port 4243**.
+- To build: Arch's `rust` package (edition 2024). `bin/install` pulls it in if it is missing.
 
 ## Getting your input back
 
@@ -94,6 +110,8 @@ ferry also releases by itself:
 |---|---|
 | `ferry status` | This peer, each peer's link, and the current state |
 | `ferry go left\|right\|up\|down` | Move input to the machine on that side, or back home |
+| `ferry doctor` | Check this machine; prints a fix for every problem it finds |
+| `ferry ui arrange\|pair\|settings` | Open a panel of the bar widget |
 | `ferry peers`, `ferry unpair` | List the pinned peers, or remove one |
 | `ferry id`, `ferry trust` | Pair by hand: print this machine's fingerprint, or pin another's |
 | `ferry config` | Read and change `config.toml` through `ferryd`, which checks every value |
@@ -101,6 +119,36 @@ ferry also releases by itself:
 
 Every command takes `--json`. The socket API is documented in
 [`docs/api/socket-api.md`](docs/api/socket-api.md).
+
+## Troubleshooting
+
+- **Start with `ferry doctor`** on both machines. It checks the daemon, Hyprland, the portal, the
+  key bindings, the firewall and each peer, and prints a fix for each problem.
+- **The machines don't connect.** Both must allow UDP port 4243. Omarchy's firewall blocks it until
+  `ferry setup` opens it (`sudo ufw allow ferry`).
+- **The pointer stops at the edge.** Only edges that touch in the layout are links. Check with
+  `ferry layout show`, or open the Arrange panel.
+- **Logs:** `journalctl --user -u ferryd -f`.
+
+## Update and uninstall
+
+To update, on every machine:
+
+```bash
+git pull
+bin/install
+systemctl --user restart ferryd    # the running daemon is still the old version
+```
+
+To uninstall:
+
+```bash
+ferry setup --undo                 # add --purge to also delete keys, peers and settings
+sudo pacman -R ferry
+```
+
+`ferry setup --undo` prints the Hyprland and firewall lines it added; remove those yourself.
+[`docs/packaging.md`](docs/packaging.md) has the details, and what the package installs.
 
 ## Known limitations
 
