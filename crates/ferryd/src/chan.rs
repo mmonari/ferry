@@ -175,6 +175,11 @@ pub enum NetCmd {
     CursorPolled(Option<(f64, f64)>),
     /// Lock to this machine changed: tell every up peer that lists `peer-state`.
     SetLocked(bool),
+    /// `config.set clipboard.*`: sharing on or off, and the largest item, at once.
+    ClipConfig { enabled: bool, max_bytes: u64 },
+    /// This peer's source crossed into `peer`: it is the clipboard partner now, and gets the
+    /// offer it missed, if any.
+    ClipEntered(Fingerprint),
     /// Shutdown, after the portal `Release`: ferry-inject `sync()`, `close_graceful(100 ms)` on
     /// every connection, close the endpoint, stop.
     Shutdown { ack: oneshot::Sender<()> },
@@ -220,6 +225,12 @@ impl std::fmt::Debug for NetCmd {
             Self::ShutdownMachine { .. } => f.write_str("ShutdownMachine"),
             Self::CursorPolled(p) => f.debug_tuple("CursorPolled").field(p).finish(),
             Self::SetLocked(on) => f.debug_tuple("SetLocked").field(on).finish(),
+            Self::ClipConfig { enabled, max_bytes } => f
+                .debug_struct("ClipConfig")
+                .field("enabled", enabled)
+                .field("max_bytes", max_bytes)
+                .finish(),
+            Self::ClipEntered(p) => f.debug_tuple("ClipEntered").field(p).finish(),
             Self::Shutdown { .. } => f.write_str("Shutdown"),
             Self::PairAccept { .. } => f.write_str("PairAccept"),
             Self::PairStart { .. } => f.write_str("PairStart"),

@@ -476,6 +476,10 @@ async fn apply(ctl: &Rc<Ctl>, msg: CtlMsg) {
         CtlMsg::Notice(notice) => ctl.hub.publish_notice(&notice),
         CtlMsg::Ui(view) => ctl.hub.publish_ui(view),
         CtlMsg::Crossed(c) => {
+            if let crate::chan::Crossed::Source { link, home: false } = c {
+                let peer = ferry_net::Fingerprint(link.to.peer.0);
+                let _ = ctl.net.try_send(NetCmd::ClipEntered(peer));
+            }
             if ctl.hub.wants(ferry_core::api::Topic::Edge)
                 && ctl.state.borrow().config.crossing.edge_glow
                 && let Some(edge) = ctl.state.borrow().edge_event(c)

@@ -54,7 +54,7 @@ FocusScope {
   readonly property var activity: Model.activityItems(FerryClient.notices, clock.now, 5, FerryClient.attention)
   readonly property var chordKeys: Model.chordKeys(FerryClient.escapeChord)
   readonly property bool canConfig: FerryClient.hasMethod("config.set") && FerryClient.config !== null
-  // the clipboard stream is not built yet: its switch is shown off and cannot be pressed
+  // a ferryd without clipboard sharing marks the key unavailable: its switch is shown off and cannot be pressed
   readonly property bool clipboardAvailable: Model.keyAvailable(FerryClient.configSchema, "clipboard.enabled")
     && FerryClient.config !== null && FerryClient.config["clipboard.enabled"] !== undefined
   readonly property bool canRename: FerryClient.hasMethod("peer.rename")

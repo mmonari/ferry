@@ -1560,3 +1560,67 @@ async fn both_sides_close_gracefully_whoever_finishes_first() {
         drop(ba);
     }
 }
+
+#[tokio::test]
+async fn data_streams_carry_bytes_both_ways_beside_the_frames() {
+    let (a, b) = (endpoint(lo()), endpoint(lo()));
+    trust_each_other(&a, &b);
+    let (mut ab, ba) = connect(&a, &b).await;
+
+    // 3 MiB from the acceptor (it opens streams too), a frame queued behind its first bytes
+    let big = pattern(3 << 20, 7);
+    let mut s = within(ba.conn.open_data()).await.unwrap();
+    s.write_all(b"head").await.unwrap();
+    ba.conn
+        .try_send_frame(Bytes::from_static(b"frame"))
+        .unwrap();
+    let sender = {
+        let big = big.clone();
+        tokio::spawn(async move {
+            s.write_chunk(big).await.unwrap();
+            s.finish();
+        })
+    };
+    let mut r = within(ab.conn.accept_data()).await.unwrap();
+    assert_eq!(
+        next(&mut ab.events).await,
+        Event::Frame(Bytes::from_static(b"frame"))
+    );
+    let mut head = [0u8; 4];
+    within(r.read_exact(&mut head)).await.unwrap();
+    assert_eq!(&head, b"head");
+    let mut got = Vec::new();
+    while let Some(c) = within(r.read_chunk(64 << 10)).await.unwrap() {
+        got.extend_from_slice(&c);
+    }
+    assert_eq!(got.len(), big.len());
+    assert!(got == big[..]);
+    sender.await.unwrap();
+
+    // the dialer's way, and a reset the reader sees as one
+    let mut s = within(ab.conn.open_data()).await.unwrap();
+    s.write_all(b"partial").await.unwrap();
+    let mut r = within(ba.conn.accept_data()).await.unwrap();
+    let mut first = [0u8; 7];
+    within(r.read_exact(&mut first)).await.unwrap();
+    s.reset(9);
+    assert_eq!(
+        within(r.read_chunk(1024)).await,
+        Err(ferry_net::StreamError::Reset(9))
+    );
+
+    // a reader that stops: the writer learns it
+    let mut s = within(ab.conn.open_data()).await.unwrap();
+    s.write_all(b"x").await.unwrap();
+    let r = within(ba.conn.accept_data()).await.unwrap();
+    r.stop(4);
+    let err = within(async {
+        loop {
+            if let Err(e) = s.write_all(&[0u8; 65536]).await {
+                return e;
+            }
+        }
+    })
+    .await;
+    assert_eq!(err, ferry_net::StreamError::Stopped(4));
+}

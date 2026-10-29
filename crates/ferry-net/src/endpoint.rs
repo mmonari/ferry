@@ -267,9 +267,10 @@ fn transport(cfg: &EndpointConfig, peer_may_open_bidi: bool) -> quinn::Transport
         .datagram_send_buffer_size(cfg.datagram_send_buffer)
         .keep_alive_interval(Some(cfg.keep_alive))
         .max_idle_timeout(cfg.idle_timeout.try_into().ok())
-        // Only the dialer opens a stream: the control stream. Clipboard uni streams come later.
+        // Only the dialer opens a bidirectional stream: the control stream. Either side opens
+        // data streams, a few at a time.
         .max_concurrent_bidi_streams(u32::from(peer_may_open_bidi).into())
-        .max_concurrent_uni_streams(0u32.into())
+        .max_concurrent_uni_streams(crate::MAX_DATA_STREAMS.into())
         .congestion_controller_factory(Arc::new(FlooredConfig::new(cfg.min_window)));
     t
 }

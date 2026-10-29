@@ -56,6 +56,12 @@ pub enum Command {
         #[arg(value_enum)]
         to: LockTo,
     },
+    /// Share the clipboard with the other machines, or stop. The same as `ferry config set
+    /// clipboard.enabled`; it applies at once.
+    Clipboard {
+        #[arg(value_enum)]
+        to: LockTo,
+    },
     /// Pair with another machine: both show a 6-digit code, and you confirm on both.
     Pair(PairArgs),
     /// The pinned peers: how each was paired, where it is dialled, when it was last seen.

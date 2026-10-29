@@ -30,6 +30,7 @@
 //!   type.
 //! - A change these rules cannot express bumps [`PROTO_MAJOR`].
 
+pub mod clip;
 pub mod control;
 pub mod datagram;
 
@@ -50,8 +51,12 @@ pub const PROTO_MAJOR: u16 = 1;
 pub const PROTO_MINOR: u16 = 0;
 /// `PeerState` (#14): lock to this machine travels to the other peers.
 pub const FEATURE_PEER_STATE: &str = "peer-state";
+/// `ClipOffer`, `ClipRequest`, `ClipAbort` (#20, #21, #23) and the clipboard data streams.
+/// Listed by every build that has them, on or off: a peer with sharing off ignores
+/// offers and refuses requests.
+pub const FEATURE_CLIPBOARD: &str = "clipboard";
 /// Optional behaviours this build supports, listed in `Hello`.
-pub const FEATURES: &[&str] = &[FEATURE_PEER_STATE];
+pub const FEATURES: &[&str] = &[FEATURE_PEER_STATE, FEATURE_CLIPBOARD];
 
 /// Largest control frame body either side sends or accepts. ferry-net
 /// enforces it on read and closes the connection beyond it.
@@ -73,6 +78,9 @@ pub mod caps {
     pub const HELD_BUTTONS: usize = crate::held::MAX_HELD_BUTTONS;
     pub const ERROR_MESSAGE: usize = 512;
     pub const LAYOUT_PEERS: usize = 4;
+    /// Mime types in one `ClipOffer`; a browser offers about ten.
+    pub const CLIP_MIMES: usize = 32;
+    pub const CLIP_MIME_LEN: usize = 128;
     /// A peer monitor's logical width or height (A-03): four times an 8K
     /// panel at scale 1.
     pub const MONITOR_SIZE: u32 = 1 << 16;

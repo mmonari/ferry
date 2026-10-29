@@ -1000,3 +1000,69 @@ fn seq_newer_across_max() {
     assert!(seq_newer(5, u32::MAX - 5));
     assert!(!seq_newer(u32::MAX, 0));
 }
+
+fn clip_messages() -> Vec<Control> {
+    vec![
+        Control::ClipOffer {
+            serial: 4,
+            mimes: vec!["text/plain;charset=utf-8".into(), "image/png".into()],
+        },
+        Control::ClipRequest {
+            serial: 4,
+            id: 3,
+            mime: "image/png".into(),
+        },
+        Control::ClipAbort {
+            id: 3,
+            reason: super::clip::AbortReason::TooLarge.code(),
+        },
+    ]
+}
+
+#[test]
+fn clip_messages_round_trip_go_only_with_the_feature_and_keep_their_numbers() {
+    for (m, n) in clip_messages().into_iter().zip([20, 21, 23]) {
+        assert_eq!(m.variant(), n);
+        assert_eq!(
+            Control::decode(&enc(&m)).ok(),
+            Some(Decoded::Msg(m.clone()))
+        );
+        assert_eq!(m.feature(), Some(super::FEATURE_CLIPBOARD));
+        assert!(!m.may_send_to(&["peer-state".to_string()]));
+        assert!(m.may_send_to(&["clipboard".to_string()]));
+    }
+    assert!(super::FEATURES.contains(&"clipboard"));
+}
+
+#[test]
+fn clip_mimes_are_capped_and_printable() {
+    let offer = |mimes: Vec<String>| enc(&Control::ClipOffer { serial: 1, mimes });
+    let many = (0..=super::caps::CLIP_MIMES)
+        .map(|i| format!("text/x-{i}"))
+        .collect();
+    assert!(matches!(
+        Control::decode(&offer(many)),
+        Err(DecodeError::Limit {
+            field: "clip.mimes",
+            ..
+        })
+    ));
+    let long = "t".repeat(super::caps::CLIP_MIME_LEN + 1);
+    assert!(matches!(
+        Control::decode(&offer(vec![long])),
+        Err(DecodeError::Limit {
+            field: "clip.mime",
+            ..
+        })
+    ));
+    for bad in ["text/plain\n", ""] {
+        assert!(matches!(
+            Control::decode(&enc(&Control::ClipRequest {
+                serial: 1,
+                id: 1,
+                mime: bad.into()
+            })),
+            Err(DecodeError::Text { field: "clip.mime" })
+        ));
+    }
+}

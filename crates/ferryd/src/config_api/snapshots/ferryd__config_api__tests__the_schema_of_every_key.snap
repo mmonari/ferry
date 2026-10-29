@@ -115,9 +115,8 @@ expression: schema()
       "key": "clipboard.enabled",
       "type": "bool",
       "default": true,
-      "applies": "restart",
-      "doc": "Share the clipboard between the machines",
-      "available": false
+      "applies": "live",
+      "doc": "Share the clipboard between the machines"
     },
     {
       "key": "clipboard.max_bytes",
@@ -126,9 +125,8 @@ expression: schema()
       "min": 0,
       "max": 9223372036854775807,
       "unit": "bytes",
-      "applies": "restart",
-      "doc": "The largest clipboard item that is shared",
-      "available": false
+      "applies": "live",
+      "doc": "The largest clipboard item that is shared"
     },
     {
       "key": "discovery.mdns",

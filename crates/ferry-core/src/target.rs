@@ -658,7 +658,10 @@ impl TargetMachine {
             | Control::LayoutAck { .. }
             | Control::HeldAck { .. }
             | Control::Ended { .. }
-            | Control::PeerState { .. } => {}
+            | Control::PeerState { .. }
+            | Control::ClipOffer { .. }
+            | Control::ClipRequest { .. }
+            | Control::ClipAbort { .. } => {}
         }
     }
 

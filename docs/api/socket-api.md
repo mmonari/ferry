@@ -554,7 +554,7 @@ The example lists four keys, the last one not available yet. The full list is th
 
 ```jsonl
 > {"id":3,"method":"config.schema"}
-< {"id":3,"result":{"keys":[{"key":"crossing.edge_resistance_px","type":"int","default":0,"min":0,"max":200,"unit":"px","applies":"live","doc":"Push this far into an edge before crossing"},{"key":"crossing.escape_chord","type":"chord","default":"Super+Ctrl+Escape","applies":"setup","doc":"Keys that always give input back"},{"key":"input.capture","type":"enum","default":"auto","choices":["auto","portal","off"],"applies":"restart","doc":"How input is captured"},{"key":"clipboard.enabled","type":"bool","default":true,"applies":"restart","doc":"Share the clipboard between the machines","available":false}]}}
+< {"id":3,"result":{"keys":[{"key":"crossing.edge_resistance_px","type":"int","default":0,"min":0,"max":200,"unit":"px","applies":"live","doc":"Push this far into an edge before crossing"},{"key":"crossing.escape_chord","type":"chord","default":"Super+Ctrl+Escape","applies":"setup","doc":"Keys that always give input back"},{"key":"input.capture","type":"enum","default":"auto","choices":["auto","portal","off"],"applies":"restart","doc":"How input is captured"},{"key":"discovery.mdns","type":"bool","default":true,"applies":"restart","doc":"Look for other machines on the network","available":false}]}}
 ```
 
 ### `config.get`
@@ -1151,15 +1151,15 @@ key.
 | `input.capture` | enum | `"auto"` | `auto`, `portal`, `direct`, `layer-shell`, `off` | restart |
 | `input.emulation` | enum | `"wayland"` | `wayland` | restart |
 | `input.scroll_invert` | bool | `false` | | restart |
-| `clipboard.enabled` | bool | `true` | | restart |
-| `clipboard.max_bytes` | int | `33554432` | 0 to 9223372036854775807 bytes | restart |
+| `clipboard.enabled` | bool | `true` | | live |
+| `clipboard.max_bytes` | int | `33554432` | 0 to 9223372036854775807 bytes | live |
 | `discovery.mdns` | bool | `true` | | restart |
 | `discovery.advertise` | bool | `true` | | restart |
 | `safety.lock_check_budget_ms` | int | `50` | 50 to 100 ms | restart |
 | `notify.enabled` | bool | `true` | | live |
 
-`input.scroll_invert`, `clipboard.*` and `discovery.*` are saved and read back, and the features that
-use them arrive later. `config.schema` marks these five keys `"available":false`.
+`input.scroll_invert` and `discovery.*` are saved and read back, and the features that use them
+arrive later. `config.schema` marks these three keys `"available":false`.
 
 ## Counters
 

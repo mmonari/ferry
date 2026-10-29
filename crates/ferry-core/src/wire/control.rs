@@ -20,7 +20,10 @@
 //! | 13 | `Ended` | target → source |
 //! | 14 | `PeerState` | both (feature `peer-state`) |
 //! | 15–19 | reserved (input) | |
-//! | 20–23 | reserved: clipboard offer / request / chunk header / abort (M4) | |
+//! | 20 | `ClipOffer` | both (feature `clipboard`) |
+//! | 21 | `ClipRequest` | both (feature `clipboard`) |
+//! | 22 | reserved: the data stream's header is not a control frame ([`super::clip`]) | |
+//! | 23 | `ClipAbort` | both (feature `clipboard`) |
 //! | 24–29 | reserved | |
 //! | 30–33 | pairing, only on `ferry-pair/1`: see [`Pair`] and [`crate::pair`] | |
 
@@ -228,6 +231,40 @@ pub enum Control {
         #[n(0)]
         locked: bool,
     },
+    /// This peer's clipboard changed: the types it offers, not the data. A peer
+    /// that pastes answers with [`Control::ClipRequest`] naming `serial`.
+    #[n(20)]
+    ClipOffer {
+        /// +1 per local selection change; a request for an older one is refused.
+        #[n(0)]
+        serial: u32,
+        #[n(1)]
+        #[cbor(decode_with = "capped_mimes")]
+        mimes: Vec<String>,
+    },
+    /// An application on the requesting peer pastes: send offer `serial` in `mime` on a data
+    /// stream that starts with `id` ([`super::clip::DataHeader`]).
+    #[n(21)]
+    ClipRequest {
+        #[n(0)]
+        serial: u32,
+        /// Odd from the dialer, even from the acceptor ([`super::clip::TransferIds`]), so an
+        /// abort is never ambiguous.
+        #[n(1)]
+        id: u32,
+        #[n(2)]
+        mime: String,
+    },
+    /// Transfer `id` ends without data: the provider cannot serve it, or the requester no
+    /// longer wants it.
+    #[n(23)]
+    ClipAbort {
+        #[n(0)]
+        id: u32,
+        /// [`super::clip::AbortReason`] code.
+        #[n(1)]
+        reason: u8,
+    },
 }
 
 /// A capped list was longer than its cap. Raised inside the CBOR decoder
@@ -293,6 +330,13 @@ fn capped_buttons<'b, Ctx>(
     ctx: &mut Ctx,
 ) -> Result<Vec<u16>, minicbor::decode::Error> {
     capped(d, ctx, "held.buttons", super::caps::HELD_BUTTONS)
+}
+
+fn capped_mimes<'b, Ctx>(
+    d: &mut minicbor::Decoder<'b>,
+    ctx: &mut Ctx,
+) -> Result<Vec<String>, minicbor::decode::Error> {
+    capped(d, ctx, "clip.mimes", super::caps::CLIP_MIMES)
 }
 
 fn capped_origins<'b, Ctx>(
@@ -582,6 +626,9 @@ impl Control {
             Control::HeldAck { .. } => 12,
             Control::Ended { .. } => 13,
             Control::PeerState { .. } => 14,
+            Control::ClipOffer { .. } => 20,
+            Control::ClipRequest { .. } => 21,
+            Control::ClipAbort { .. } => 23,
         }
     }
 
@@ -591,6 +638,9 @@ impl Control {
     pub fn feature(&self) -> Option<&'static str> {
         match self {
             Control::PeerState { .. } => Some(super::FEATURE_PEER_STATE),
+            Control::ClipOffer { .. } | Control::ClipRequest { .. } | Control::ClipAbort { .. } => {
+                Some(super::FEATURE_CLIPBOARD)
+            }
             _ => None,
         }
     }
@@ -704,6 +754,14 @@ impl Control {
                 }
                 Ok(())
             }
+            Control::ClipOffer { mimes, .. } => {
+                cap("clip.mimes", mimes.len(), caps::CLIP_MIMES)?;
+                for m in mimes {
+                    clip_mime(m)?;
+                }
+                Ok(())
+            }
+            Control::ClipRequest { mime, .. } => clip_mime(mime),
             Control::Enter { .. }
             | Control::Leave { .. }
             | Control::Key { .. }
@@ -712,7 +770,23 @@ impl Control {
             | Control::LayoutAck { .. }
             | Control::HeldAck { .. }
             | Control::Ended { .. }
-            | Control::PeerState { .. } => Ok(()),
+            | Control::PeerState { .. }
+            | Control::ClipAbort { .. } => Ok(()),
         }
     }
+}
+
+/// A mime type from a peer: at most [`super::caps::CLIP_MIME_LEN`] bytes of printable ASCII, so
+/// it can go to the compositor and the log as it is.
+fn clip_mime(m: &str) -> Result<(), super::DecodeError> {
+    if m.len() > super::caps::CLIP_MIME_LEN {
+        return Err(super::DecodeError::Limit {
+            field: "clip.mime",
+            cap: super::caps::CLIP_MIME_LEN,
+        });
+    }
+    if m.is_empty() || !m.bytes().all(|b| b.is_ascii_graphic() || b == b' ') {
+        return Err(super::DecodeError::Text { field: "clip.mime" });
+    }
+    Ok(())
 }

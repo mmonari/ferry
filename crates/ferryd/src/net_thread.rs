@@ -32,6 +32,10 @@
 //! machine, only to a peer whose `Hello` listed `peer-state`. An incoming one becomes
 //! `PeerLocked` for the capture thread and `peers[].locked` in `status`.
 
+mod clip;
+
+pub use clip::ClipInit;
+
 use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::mpsc::TrySendError;
@@ -107,6 +111,8 @@ pub struct NetInit {
     pub locked: bool,
     /// How a host name becomes an address (`Options::lookup`; the system's in the binary).
     pub lookup: Lookup,
+    /// Clipboard sharing.
+    pub clip: ClipInit,
 }
 
 /// Past this many owed capture messages, liveness hints (`PeerAlive`, `HeldAck`) are dropped.
@@ -145,6 +151,7 @@ pub fn spawn(init: NetInit) -> Result<NetHandle, StartError> {
                     }
                 };
                 let _ = bound_tx.send(Ok(local));
+                let (clip, clip_ev, clip_in) = clip::ClipState::new(init.clip);
                 let mut net = Net::new(
                     endpoint,
                     init.name,
@@ -152,12 +159,13 @@ pub fn spawn(init: NetInit) -> Result<NetHandle, StartError> {
                     init.ctl,
                     init.capture,
                     init.live,
+                    clip,
                 );
                 net.capture_on = init.capture_on;
                 net.cursor_poll = init.cursor_poll;
                 net.locked = init.locked;
                 net.lookup = init.lookup;
-                net.run(rx).await;
+                net.run(rx, clip_ev, clip_in).await;
             });
             // A lookup still waiting in getaddrinfo (nss-mdns waits about 5 s) sits on tokio's
             // blocking pool, and dropping the runtime would wait for it: past TimeoutStopSec.
@@ -294,6 +302,7 @@ struct Net {
     /// The pairing window or dial, and its one attempt.
     pairing: NetPairing,
     pair_rx: Option<mpsc::Receiver<PairInternal>>,
+    clip: clip::ClipState,
 }
 
 /// Sleeps until `at`, or forever.
@@ -333,6 +342,7 @@ impl Net {
         ctl: mpsc::Sender<CtlMsg>,
         capture: SyncSender<CaptureCmd>,
         live: SharedLive,
+        clip: clip::ClipState,
     ) -> Self {
         // The receivers are created in `run`; these senders are replaced there.
         let (ev_tx, _) = mpsc::channel(1);
@@ -386,10 +396,16 @@ impl Net {
             rearm_after: None,
             pairing,
             pair_rx: Some(pair_rx),
+            clip,
         }
     }
 
-    async fn run(mut self, mut cmds: mpsc::Receiver<NetCmd>) {
+    async fn run(
+        mut self,
+        mut cmds: mpsc::Receiver<NetCmd>,
+        mut clip_ev: mpsc::UnboundedReceiver<crate::clip::ClipEvent>,
+        mut clip_in: mpsc::UnboundedReceiver<clip::ClipIn>,
+    ) {
         let (ev_tx, mut ev_rx) = mpsc::channel(1024);
         let (redial_tx, mut redial_rx) = mpsc::channel(16);
         self.ev_tx = ev_tx;
@@ -460,6 +476,8 @@ impl Net {
                     }
                 }
                 Some(r) = resolved_rx.recv() => self.resolved(r),
+                Some(ev) = clip_ev.recv() => self.clip_event(ev),
+                Some(m) = clip_in.recv() => self.clip_in(m),
                 e = next_input_event(&mut inject_events) => self.input_event(e),
                 // Pairing: accepted ferry-pair/1 connections, the dial and
                 // attempt tasks, and the end of the acceptor's window.
@@ -529,6 +547,7 @@ impl Net {
             self.target_event(TargetEvent::CursorPoll(true));
         }
         self.started = true;
+        self.clip_start();
     }
 
     async fn command(&mut self, cmd: NetCmd) {
@@ -578,6 +597,8 @@ impl Net {
                 let _ = ack.send(());
             }
             NetCmd::CursorPolled(pos) => self.target_event(TargetEvent::CursorPolled(pos)),
+            NetCmd::ClipConfig { enabled, max_bytes } => self.clip_config(enabled, max_bytes),
+            NetCmd::ClipEntered(peer) => self.clip_partner(peer, true),
             NetCmd::SetLocked(on) => {
                 self.locked = on;
                 let up: Vec<Fingerprint> = self
@@ -734,6 +755,7 @@ impl Net {
             conn: None,
         });
         self.target_event(TargetEvent::PeerDown(id));
+        self.clip_peer_down(peer);
     }
 
     // --- Hello ------------------------------------------------------------------------------
@@ -853,6 +875,7 @@ impl Net {
         self.target_event(TargetEvent::PeerUp(id));
         // Lock to this machine, after Hello.
         self.send_peer_state(&peer);
+        self.clip_peer_up(peer, &conn);
         self.report_full(
             peer,
             LinkState::Connected,
@@ -1000,6 +1023,9 @@ impl Net {
                     locked,
                 }));
             }
+            msg @ (Control::ClipOffer { .. }
+            | Control::ClipRequest { .. }
+            | Control::ClipAbort { .. }) => self.clip_frame(peer, msg),
         }
     }
 
@@ -1122,10 +1148,16 @@ impl Net {
                             "target watchdog: released everything"
                         );
                     }
-                    if let Some(c) = target_crossed(&mut self.entered, &s)
-                        && self.ctl.try_send(CtlMsg::Crossed(c)).is_err()
-                    {
-                        self.live.bump("ctl_queue_full");
+                    if let Some(c) = target_crossed(&mut self.entered, &s) {
+                        if let Crossed::Target {
+                            peer, home: false, ..
+                        } = c
+                        {
+                            self.clip_partner(Fingerprint(peer.0), false);
+                        }
+                        if self.ctl.try_send(CtlMsg::Crossed(c)).is_err() {
+                            self.live.bump("ctl_queue_full");
+                        }
                     }
                     self.live.target_status(s);
                 }
@@ -1337,6 +1369,7 @@ impl Net {
             i.maintain(active);
             crate::inject::publish_stats(&self.live, i.stats_delta());
         }
+        self.clip_tick();
         self.ping_id = self.ping_id.wrapping_add(1);
         let t_us = clock::now().low32();
         let up: Vec<(Fingerprint, bool, String, Option<u32>)> = self

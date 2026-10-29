@@ -22,6 +22,10 @@
 //!   open exchange uses them. On a pairing connection the cap is
 //!   [`EndpointConfig::pairing_max_frame`] (default [`MAX_PAIRING_FRAME`]). A peer that sends an
 //!   oversized frame is closed with [`CloseCode::FRAME_TOO_LARGE`].
+//! - **Data streams** ([`Connection::open_data`], [`Connection::accept_data`]): unidirectional
+//!   streams that either side opens, below the control stream in priority, for bulk bytes (the
+//!   clipboard, ADR 0013). At most [`MAX_DATA_STREAMS`] are open each way; ferry-net gives them
+//!   no framing.
 //!
 //! # Threading
 //!
@@ -70,9 +74,11 @@ mod socket;
 mod tls;
 mod trust;
 
-pub use connection::{Connection, Event, Events, NewConnection, PathInfo};
+pub use connection::{Connection, DataRecv, DataSend, Event, Events, NewConnection, PathInfo};
 pub use endpoint::{BindError, Endpoint, EndpointConfig, MIN_WINDOW};
-pub use error::{CloseCode, CloseReason, ConnectError, DatagramError, FrameError, IncomingError};
+pub use error::{
+    CloseCode, CloseReason, ConnectError, DatagramError, FrameError, IncomingError, StreamError,
+};
 pub use fingerprint::{Fingerprint, ParseFingerprintError};
 pub use identity::{Identity, IdentityError};
 pub use limit::{
@@ -99,6 +105,11 @@ pub const MAX_FRAME: usize = 1 << 20;
 /// `Hello` without monitors (under 200 bytes), an `Error` (at most 512) or a 32-byte `Pair`;
 /// a host with no pin must not make the decoder allocate more (A-05).
 pub const MAX_PAIRING_FRAME: usize = 4096;
+/// Data streams each side may have open at once ([`Connection::open_data`] waits beyond it).
+pub const MAX_DATA_STREAMS: u32 = 4;
+/// The priority of a data stream: below the control stream's 0, so a large transfer never delays
+/// a frame queued behind it.
+pub const DATA_PRIORITY: i32 = -1;
 /// Smallest datagram limit a peer must accept: one motion datagram. A peer
 /// with a lower limit, or with datagrams off, is refused.
 pub const MIN_DATAGRAM: usize = 28;

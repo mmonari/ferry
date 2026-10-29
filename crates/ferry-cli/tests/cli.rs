@@ -798,3 +798,31 @@ fn events_with_an_unknown_topic_is_a_usage_error_naming_the_topics() {
     assert_eq!(out, "");
     assert!(err.contains("fax") && err.contains("notice"), "{err}");
 }
+
+#[test]
+fn clipboard_on_off_and_toggle_set_the_live_key() {
+    let env = Env::new();
+    let d = env.daemon("desk");
+    let get = || ferry(&env, &["config", "get", "clipboard.enabled"]).1;
+    assert_eq!(
+        ferry(&env, &["clipboard", "off"]),
+        (
+            0,
+            "clipboard.enabled = false (applied)\n".into(),
+            String::new()
+        )
+    );
+    assert!(get().contains("false"), "{}", get());
+    assert_eq!(ferry(&env, &["clipboard", "toggle"]).0, 0);
+    assert!(get().contains("true"), "{}", get());
+    let (code, out, _) = ferry(&env, &["--json", "clipboard", "toggle"]);
+    assert_eq!(code, 0);
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(
+        (v["key"].as_str(), v["value"].as_bool()),
+        (Some("clipboard.enabled"), Some(false))
+    );
+    assert_eq!(ferry(&env, &["clipboard", "on"]).0, 0);
+    assert!(get().contains("true"), "{}", get());
+    d.shutdown();
+}

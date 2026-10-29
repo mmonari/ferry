@@ -518,6 +518,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferry-clip"
+version = "0.1.0"
+dependencies = [
+ "calloop",
+ "ferry-wl",
+ "rustix",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "wayland-client",
+ "wayland-protocols",
+]
+
+[[package]]
 name = "ferry-core"
 version = "0.1.0"
 dependencies = [
@@ -601,6 +615,7 @@ dependencies = [
  "bytes",
  "calloop",
  "ferry-capture",
+ "ferry-clip",
  "ferry-core",
  "ferry-hypr-ipc",
  "ferry-inject",

@@ -1,7 +1,9 @@
 //! One peer connection: datagrams, the framed control stream, and its event stream.
 
 use crate::error::{LocalClose, close_reason};
-use crate::{CloseCode, CloseReason, ConnectError, DatagramError, Fingerprint, FrameError};
+use crate::{
+    CloseCode, CloseReason, ConnectError, DatagramError, Fingerprint, FrameError, StreamError,
+};
 use bytes::{Bytes, BytesMut};
 use std::net::SocketAddr;
 use std::sync::{Arc, OnceLock};
@@ -134,6 +136,28 @@ impl Connection {
             })
     }
 
+    /// Opens a data stream to the peer, at [`crate::DATA_PRIORITY`]. Waits while
+    /// [`crate::MAX_DATA_STREAMS`] of this side's are open. Await it on the endpoint's runtime.
+    pub async fn open_data(&self) -> Result<DataSend, StreamError> {
+        let s = self
+            .quic
+            .open_uni()
+            .await
+            .map_err(|_| StreamError::Closed)?;
+        let _ = s.set_priority(crate::DATA_PRIORITY);
+        Ok(DataSend(s))
+    }
+
+    /// The next data stream the peer opened, in the order they were opened. Await it on the
+    /// endpoint's runtime; fails once the connection is closed.
+    pub async fn accept_data(&self) -> Result<DataRecv, StreamError> {
+        self.quic
+            .accept_uni()
+            .await
+            .map(DataRecv)
+            .map_err(|_| StreamError::Closed)
+    }
+
     /// Closes the connection at once; the peer sees [`CloseReason::Peer`] with `code` and
     /// `reason`. Queued frames and datagrams that have not left are dropped; use
     /// [`Connection::close_graceful`] to deliver them first.
@@ -198,6 +222,53 @@ impl Connection {
             sent_packets: p.sent_packets,
             current_mtu: p.current_mtu,
         }
+    }
+}
+
+/// The sending half of a data stream ([`Connection::open_data`]).
+#[derive(Debug)]
+pub struct DataSend(quinn::SendStream);
+
+impl DataSend {
+    /// Writes every byte; waits for flow control.
+    pub async fn write_all(&mut self, data: &[u8]) -> Result<(), StreamError> {
+        Ok(self.0.write_all(data).await?)
+    }
+
+    /// Writes `data` without copying it.
+    pub async fn write_chunk(&mut self, data: Bytes) -> Result<(), StreamError> {
+        Ok(self.0.write_chunk(data).await?)
+    }
+
+    /// Ends the stream after what was written; the bytes keep going while the connection lives.
+    pub fn finish(mut self) {
+        let _ = self.0.finish();
+    }
+
+    /// Abandons the stream: what is not sent is dropped, and the peer reads [`StreamError::Reset`].
+    pub fn reset(mut self, code: u32) {
+        let _ = self.0.reset(code.into());
+    }
+}
+
+/// The receiving half of a data stream ([`Connection::accept_data`]).
+#[derive(Debug)]
+pub struct DataRecv(quinn::RecvStream);
+
+impl DataRecv {
+    /// Fills `buf` or fails ([`StreamError::FinishedEarly`] when the stream ends first).
+    pub async fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), StreamError> {
+        Ok(self.0.read_exact(buf).await?)
+    }
+
+    /// The next bytes, at most `max`, in order; `None` once the peer finished.
+    pub async fn read_chunk(&mut self, max: usize) -> Result<Option<Bytes>, StreamError> {
+        Ok(self.0.read_chunk(max, true).await?.map(|c| c.bytes))
+    }
+
+    /// Stops reading: the peer's writes fail with [`StreamError::Stopped`].
+    pub fn stop(mut self, code: u32) {
+        let _ = self.0.stop(code.into());
     }
 }
 

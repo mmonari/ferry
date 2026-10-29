@@ -22,8 +22,9 @@ use std::path::Path;
 
 use clap::Parser;
 use ferry_core::api::{
-    AlignName, AlignParam, GoParams, IdResult, LayoutResult, LockParams, LockResult, OriginParam,
-    PeersResult, PlaceParams, Request, SetParams, StatusResult, TrustParams, TrustResult,
+    AlignName, AlignParam, ConfigGetParams, ConfigSetParams, ConfigSetResult, ConfigValues,
+    GoParams, IdResult, LayoutResult, LockParams, LockResult, OriginParam, PeersResult,
+    PlaceParams, Request, SetParams, StatusResult, TrustParams, TrustResult,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -377,6 +378,25 @@ fn execute(
             let raw = client.call(Request::Lock(LockParams { on: to.param() }))?;
             show(&raw, &|| {
                 Ok(render::lock(&typed::<LockResult>(raw.clone())?))
+            })
+        }
+        Command::Clipboard { to } => {
+            const KEY: &str = "clipboard.enabled";
+            let on = match to.param() {
+                Some(on) => on,
+                None => {
+                    let raw = client.call(Request::ConfigGet(ConfigGetParams {
+                        key: Some(KEY.into()),
+                    }))?;
+                    typed::<ConfigValues>(raw)?.values.get(KEY) != Some(&Value::Bool(true))
+                }
+            };
+            let raw = client.call(Request::ConfigSet(ConfigSetParams {
+                key: KEY.into(),
+                value: Value::Bool(on),
+            }))?;
+            show(&raw, &|| {
+                Ok(render::config_set(&typed::<ConfigSetResult>(raw.clone())?))
             })
         }
         Command::Peers => {

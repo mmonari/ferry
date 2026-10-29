@@ -280,6 +280,54 @@ pub enum FrameError {
     Empty,
 }
 
+/// A data stream ([`crate::DataSend`], [`crate::DataRecv`]) failed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum StreamError {
+    /// The connection is closed.
+    #[error("connection closed")]
+    Closed,
+    /// The peer reset the stream it was sending, with this code.
+    #[error("stream reset by the peer (code {0})")]
+    Reset(u64),
+    /// The peer stopped reading the stream this side sends, with this code.
+    #[error("stream stopped by the peer (code {0})")]
+    Stopped(u64),
+    /// The stream finished before the bytes asked for.
+    #[error("stream finished early")]
+    FinishedEarly,
+    #[error("stream: {0}")]
+    Other(String),
+}
+
+impl From<quinn::WriteError> for StreamError {
+    fn from(e: quinn::WriteError) -> Self {
+        match e {
+            quinn::WriteError::Stopped(c) => Self::Stopped(c.into_inner()),
+            quinn::WriteError::ConnectionLost(_) | quinn::WriteError::ClosedStream => Self::Closed,
+            other => Self::Other(other.to_string()),
+        }
+    }
+}
+
+impl From<quinn::ReadError> for StreamError {
+    fn from(e: quinn::ReadError) -> Self {
+        match e {
+            quinn::ReadError::Reset(c) => Self::Reset(c.into_inner()),
+            quinn::ReadError::ConnectionLost(_) | quinn::ReadError::ClosedStream => Self::Closed,
+            other => Self::Other(other.to_string()),
+        }
+    }
+}
+
+impl From<quinn::ReadExactError> for StreamError {
+    fn from(e: quinn::ReadExactError) -> Self {
+        match e {
+            quinn::ReadExactError::FinishedEarly(_) => Self::FinishedEarly,
+            quinn::ReadExactError::ReadError(e) => e.into(),
+        }
+    }
+}
+
 /// [`crate::Connection::send_datagram`] failed; nothing was queued.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum DatagramError {

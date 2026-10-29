@@ -21,6 +21,7 @@
 pub mod api;
 pub mod capture_thread;
 pub mod chan;
+pub mod clip;
 pub mod clock;
 pub mod config;
 pub mod config_api;
@@ -63,6 +64,7 @@ use ferry_core::PeerId;
 use ferry_net::Identity;
 use tokio::sync::mpsc;
 
+pub use clip::{ClipBackend, FakeClipboard};
 pub use error::StartError;
 pub use fake_devices::{DeviceCall, FakeDevices};
 pub use fake_portal::FakePortal;
@@ -109,6 +111,8 @@ pub struct Options {
     pub capture: bool,
     /// Where target input goes. [`InjectBackend::Off`] by default.
     pub inject: InjectBackend,
+    /// Where the clipboard is. [`ClipBackend::Off`] by default: nothing is shared.
+    pub clipboard: ClipBackend,
     /// Tests: run the capture side (the SourceMachine) against this stand-in instead of the
     /// portal. It turns capture on without `capture`, and touches no compositor.
     pub fake_portal: Option<FakePortal>,
@@ -138,6 +142,7 @@ impl Options {
             socket_uid: None,
             capture: false,
             inject: InjectBackend::Off,
+            clipboard: ClipBackend::Off,
             fake_portal: None,
             lookup: None,
             panic_hook: false,
@@ -178,6 +183,7 @@ impl Daemon {
             socket_uid,
             capture: capture_allowed,
             inject,
+            clipboard,
             fake_portal,
             lookup,
             panic_hook,
@@ -316,6 +322,11 @@ impl Daemon {
             cursor_poll: ipc.is_some(),
             locked,
             lookup: lookup.unwrap_or_else(netaddr::system_lookup),
+            clip: net_thread::ClipInit {
+                starter: clipboard.starter(),
+                enabled: config.clipboard.enabled,
+                max_bytes: config.clipboard.max_bytes,
+            },
         }) {
             Ok(n) => n,
             Err(e) => {

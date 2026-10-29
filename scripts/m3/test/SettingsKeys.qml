@@ -120,10 +120,10 @@ ShellRoot {
     // ---- Tab walks every control, in the order they are drawn, and comes back round
     function () {
       reopen(function () {
-      var seen = tabbed(26, true);
+      var seen = tabbed(30, true);
       var rows = [];
       seen.forEach(function (r) { if (r.indexOf(".") > 0 && rows.indexOf(r) < 0) rows.push(r); });
-      check("Tab reaches every setting that has a control (a row with one choice, or a feature not built yet, has nothing to focus)", rows.length === 12 && rows.indexOf("input.emulation") < 0 && rows.indexOf("clipboard.enabled") < 0, rows.length + ": " + rows.join(", "));
+      check("Tab reaches every setting that has a control (a row with one choice, or a feature not built yet, has nothing to focus)", rows.length === 14 && rows.indexOf("input.emulation") < 0 && rows.indexOf("discovery.mdns") < 0 && rows.indexOf("clipboard.enabled") > 0, rows.length + ": " + rows.join(", "));
       check("the first Tab from the open view goes into the first setting, not the header", seen[0] === "crossing.edge_resistance_px", seen.slice(0, 3).join(" > "));
       check("the header (tabs, close) comes after the last setting", seen.indexOf("ButtonGroup") > 0 && seen[seen.indexOf("ButtonGroup") + 1] === "PanelActionButton" && seen[seen.indexOf("ButtonGroup") - 1] === "safety.lock_check_budget_ms", seen.join(" > "));
       check("and the chain comes back round to the first setting", seen.lastIndexOf("crossing.edge_resistance_px") > 0, seen.join(" > "));

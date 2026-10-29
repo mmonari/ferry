@@ -12,10 +12,12 @@ use ferryd::{Daemon, InjectBackend, Options, Paths};
 use tracing::level_filters::LevelFilter;
 
 const USAGE: &str = "usage: ferryd [--log-level error|warn|info|debug|trace] [--no-input]\n\
-    \x20             [--notify-bus ADDRESS]\n\
+    \x20             [--clipboard] [--notify-bus ADDRESS]\n\
     \n\
     --no-input    network only: never capture, never inject (every Enter is refused), and no\n\
-    \x20             desktop toasts (the `notice` events on the socket go on)\n\
+    \x20             desktop toasts (the `notice` events on the socket go on), and no\n\
+    \x20             clipboard sharing\n\
+    --clipboard   with --no-input, share this desktop's clipboard all the same\n\
     --notify-bus  send the toasts to the D-Bus at ADDRESS, not to the session bus; with\n\
     \x20             --no-input this is the only way to get desktop toasts\n\
     \n\
@@ -36,12 +38,14 @@ fn toast_mode(bus: Option<String>, input: bool) -> Mode {
 fn main() -> ExitCode {
     let mut level = std::env::var("FERRY_LOG").ok();
     let mut input = true;
+    let mut clipboard = false;
     let mut notify_bus = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--log-level" => level = args.next(),
             "--no-input" => input = false,
+            "--clipboard" => clipboard = true,
             "--notify-bus" => {
                 // a missing address must not fall back to the session bus
                 let Some(address) = args.next() else {
@@ -102,6 +106,11 @@ fn main() -> ExitCode {
     if input {
         opts.capture = true;
         opts.inject = InjectBackend::Wayland;
+    }
+    // A `--no-input` daemon is a development one on a desktop in use: its clipboard stays its own
+    // unless asked.
+    if input || clipboard {
+        opts.clipboard = ferryd::ClipBackend::Wayland;
     }
     match Daemon::start(opts) {
         Ok(d) => {

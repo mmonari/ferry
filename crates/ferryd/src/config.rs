@@ -475,9 +475,9 @@ pub static KEYS: &[Key] = &[
         unit: None,
         doc: "How input is injected when this machine is a target",
     },
-    // The next five are read from the file and written back, and nothing else uses them yet: the
-    // scroll direction, the clipboard stream and discovery arrive with M4. `available: false` tells
-    // a frontend not to offer them as controls that do nothing.
+    // The scroll direction and discovery are read from the file and written back, and nothing
+    // else uses them yet. `available: false` tells a frontend not to offer them as controls that
+    // do nothing.
     Key {
         key: "input.scroll_invert",
         field: Field::Bool {
@@ -495,8 +495,9 @@ pub static KEYS: &[Key] = &[
             get: |c| c.clipboard.enabled,
             set: |c, v| c.clipboard.enabled = v,
         },
-        applies: Applies::Restart,
-        available: false,
+        // the net thread starts or stops the clipboard bridge at once
+        applies: Applies::Live,
+        available: true,
         unit: None,
         doc: "Share the clipboard between the machines",
     },
@@ -511,8 +512,8 @@ pub static KEYS: &[Key] = &[
             get: |c| i64::try_from(c.clipboard.max_bytes).unwrap_or(i64::MAX),
             set: |c, v| c.clipboard.max_bytes = u64::try_from(v).unwrap_or_default(),
         },
-        applies: Applies::Restart,
-        available: false,
+        applies: Applies::Live,
+        available: true,
         unit: Some("bytes"),
         doc: "The largest clipboard item that is shared",
     },

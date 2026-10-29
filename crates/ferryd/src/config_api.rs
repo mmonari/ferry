@@ -365,6 +365,16 @@ pub async fn set(ctl: &Ctl, p: ConfigSetParams) -> Result<ConfigSetResult, ApiEr
     if key.parts().0 == "crossing" && ctl.capture_on {
         crate::ctl::push_source_config(ctl).await;
     }
+    if key.parts().0 == "clipboard" {
+        let c = ctl.state.borrow().config.clipboard.clone();
+        let _ = ctl
+            .net
+            .send(crate::chan::NetCmd::ClipConfig {
+                enabled: c.enabled,
+                max_bytes: c.max_bytes,
+            })
+            .await;
+    }
     if key.key == "notify.enabled" {
         let on = ctl.state.borrow().config.notify.enabled;
         crate::notify::set_enabled(ctl, on);

@@ -79,6 +79,8 @@ and mouse home.
   through a linked edge enters the next machine at the matching point.
 - **Keybind crossings.** `Super+Ctrl+Alt` plus an arrow key moves the keyboard and mouse to the
   machine on that side, or back home, without touching the pointer.
+- **Shared clipboard.** Copy text or an image on one machine, cross, and paste on the other.
+  Only the list of types moves on a copy; the data moves when something pastes.
 - **Bar widget.** Shows the state of each peer. Its panels arrange the layout, pair machines and
   change the settings.
 - **Encrypted, LAN only.** Peers talk QUIC with mutual TLS 1.3. Each machine pins the other's key
@@ -114,6 +116,7 @@ ferry also releases by itself:
 | `ferry ui arrange\|pair\|settings` | Open a panel of the bar widget |
 | `ferry peers`, `ferry unpair` | List the pinned peers, or remove one |
 | `ferry id`, `ferry trust` | Pair by hand: print this machine's fingerprint, or pin another's |
+| `ferry clipboard on\|off\|toggle` | Share the clipboard with the other machines, or stop |
 | `ferry config` | Read and change `config.toml` through `ferryd`, which checks every value |
 | `ferry events` | Stream `ferryd`'s events as JSON lines, for frontend authors |
 
@@ -154,7 +157,10 @@ sudo pacman -R ferry
 
 - **Hyprland on Omarchy only.** Other compositors, macOS and Windows are out of scope.
 - **Same version on every machine.** Mixed versions are not tested.
-- **No clipboard sharing or network discovery yet.** Their settings exist, but nothing reads them.
+- **Clipboard: text and images, no files.** A copy goes to the machine the pointer last crossed
+  to or came from, and its data moves only when something pastes there (at most 32 MiB by
+  default). `ferry clipboard off` stops sharing. The primary selection (middle-click) is not shared.
+- **No network discovery yet.** Its settings exist, but nothing reads them.
 - **With fcitx5:** the first modifier pressed in a crossing that starts right after the machine
   was a target can end the crossing, and the key chord lands on the local machine.
 
