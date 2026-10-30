@@ -6,6 +6,7 @@
 
 mod support;
 
+use std::task::Poll;
 use std::time::{Duration, Instant};
 
 use ferry_net::{
@@ -254,11 +255,13 @@ fn a_handshake_its_dialer_abandons_is_not_counted_as_a_refusal() {
     let rt = rt();
     let ep = pinned_outsider(&mut c, &d, &rt);
 
-    // polled once, so the connection exists, then dropped
-    let dropped = rt.block_on(async {
-        tokio::time::timeout(Duration::ZERO, ep.dial(d.net_addr(), d.fingerprint())).await
+    // polled once, so the connection exists, then dropped. Not `timeout(Duration::ZERO, ..)`:
+    // that fires on the timer's next tick, and a fast host finishes a loopback handshake first.
+    let pending = rt.block_on(async {
+        let mut dial = std::pin::pin!(ep.dial(d.net_addr(), d.fingerprint()));
+        std::future::poll_fn(|cx| Poll::Ready(dial.as_mut().poll(cx).is_pending())).await
     });
-    assert!(dropped.is_err(), "the dial finished in one poll");
+    assert!(pending, "the dial finished in one poll");
 
     let st = wait_for("the abandoned handshake in the counters", || {
         let st = c.result("status", json!(null));

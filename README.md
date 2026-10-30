@@ -21,12 +21,12 @@ cd ferry
 bin/install          # builds the Arch package and installs it; pacman asks for sudo
 ```
 
-On a slow machine, build once on a fast one and copy the package over. The build targets plain
-x86-64, so the same package runs on every machine:
+On a slow machine, build once on a fast one and copy the package over. The build targets the
+plain baseline of its arch (x86-64 or aarch64), so the package runs on every machine of that arch:
 
 ```bash
-scp pkgbuild/ferry-*.pkg.tar.zst other-machine:     # on the fast machine
-sudo pacman -U ferry-*.pkg.tar.zst                   # on the other machine
+scp pkgbuild/ferry-*.pkg.tar.* other-machine:     # on the fast machine
+sudo pacman -U ferry-*.pkg.tar.*                   # on the other machine
 ```
 
 **2. Set up the machine**, as your own user (not root):

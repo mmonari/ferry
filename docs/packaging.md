@@ -52,7 +52,7 @@ ferry setup              # as your user, not root; asks before each step
 `makepkg` without `-s` and `-i` builds the package and installs nothing:
 
 ```bash
-cd pkgbuild && makepkg -f          # writes pkgbuild/ferry-<ver>-<rel>-x86_64.pkg.tar.zst
+cd pkgbuild && makepkg -f          # writes pkgbuild/ferry-<ver>-<rel>-<arch>.pkg.tar.zst (.xz where PKGEXT says so)
 BUILDDIR=/tmp/fb PKGDEST=/tmp/fp makepkg -f   # same, with nothing landing in the checkout
 scripts/pkg/check.sh [PKG]         # file list, unit, linkage, version, baseline CPU, namcap
 ```
@@ -71,6 +71,8 @@ makepkg's own `RUSTFLAGS` (`/etc/makepkg.conf.d/rust.conf`) is only `-C force-fr
 The same binary must run on x86-64-v2 CPUs such as the Celeron N3060. `scripts/pkg/check.sh`
 checks the configuration and starts both binaries under a Nehalem CPU (`qemu-x86_64-static`).
 That proves startup only: `ring` picks its AVX code paths at run time from `cpuid`.
+On aarch64 the package is built the same way (`arch=('x86_64' 'aarch64')`) and the Nehalem run is
+skipped; a package runs only on the arch it was built on.
 
 **One version.** `[workspace.package] version` in the top `Cargo.toml` is the only version
 . Every crate takes it with `version.workspace = true`; `pkgver` is read from it; the

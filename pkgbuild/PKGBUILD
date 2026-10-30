@@ -11,15 +11,14 @@
 # widget on the bar. scripts/pkg/expected-files.sh is the list of what the package holds;
 # Scripts/pkg/dry-package.sh runs package() below without building anything.
 #
-# arch: x86_64 only, and plain x86-64 (no -march/target-cpu=native; the netbook is a Celeron
-# N3060, x86-64-v2). The OPR fast ring will also need aarch64; nothing here has been
-# built or tested there.
+# arch: x86_64 and aarch64, each for its plain baseline (no -march/target-cpu=native; the netbook
+# is a Celeron N3060, x86-64-v2). A package runs only on the arch it was built on.
 
 pkgname=ferry
 pkgver=$(awk '/^\[/ { in_ws = ($0 == "[workspace.package]") } in_ws && /^version = / { gsub(/"/, "", $3); print $3; exit }' "$startdir/../Cargo.toml")
 pkgrel=1
 pkgdesc="One keyboard and mouse across Omarchy machines (Hyprland, local network)"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 # url: none until the repository is public
 license=('MIT')
 install='ferry.install'

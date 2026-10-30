@@ -2,7 +2,7 @@
 # What can be proven about the ferry package without root and without installing it
 # (the plain-x86-64 rule). Run it after a build:
 #
-#   scripts/pkg/check.sh [PKGFILE]     default: the newest ferry-*.pkg.tar.zst in $PKGDEST,
+#   scripts/pkg/check.sh [PKGFILE]     default: the newest ferry-*.pkg.tar.* in $PKGDEST,
 #                                      else in pkgbuild/
 #   options: --no-emulate              skip the Nehalem run under qemu-user
 #
@@ -38,9 +38,9 @@ must() { local what=$1; shift; if "$@"; then ok "$what"; else bad "$what"; fi; }
 
 if [ -z "$PKG" ]; then
   # shellcheck disable=SC2012  # makepkg names are plain; newest first is the point
-  PKG=$(ls -t "${PKGDEST:-$ROOT/pkgbuild}"/ferry-*.pkg.tar.zst 2>/dev/null | head -1)
+  PKG=$(ls -t "${PKGDEST:-$ROOT/pkgbuild}"/ferry-*.pkg.tar.{zst,xz} 2>/dev/null | head -1)
 fi
-[ -f "$PKG" ] || { echo "error: no ferry-*.pkg.tar.zst (build one: cd pkgbuild && makepkg -f)" >&2; exit 2; }
+[ -f "$PKG" ] || { echo "error: no ferry-*.pkg.tar.* (build one: cd pkgbuild && makepkg -f)" >&2; exit 2; }
 echo "package: $PKG"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/ferry-pkgcheck.XXXXXX") || exit 2
@@ -133,7 +133,7 @@ for c in "$ROOT"/crates/*/Cargo.toml; do
   grep -q '^version.workspace = true$' "$c" || bad "$(basename "$(dirname "$c")") sets its own version"
 done
 
-echo "== plain x86-64 (the netbook is a Celeron N3060)"
+echo "== no target CPU (on x86-64, the netbook is a Celeron N3060)"
 cfg=0
 for f in "$ROOT/.cargo/config.toml" "$ROOT/.cargo/config" "$HOME/.cargo/config.toml" /etc/makepkg.conf /etc/makepkg.conf.d/rust.conf; do
   if [ -f "$f" ] && grep -v '^[[:space:]]*#' "$f" | grep -q -E 'target-cpu|target_cpu|march=native'; then
@@ -143,7 +143,9 @@ done
 if printf '%s %s' "${RUSTFLAGS:-}" "${CARGO_ENCODED_RUSTFLAGS:-}" | grep -q 'target-cpu'; then bad "RUSTFLAGS sets a target CPU"; cfg=1; fi
 [ $cfg = 0 ] && ok "no target-cpu in .cargo, makepkg.conf, rust.conf or RUSTFLAGS"
 info "makepkg RUSTFLAGS: $(grep -h '^RUSTFLAGS=' /etc/makepkg.conf.d/rust.conf 2>/dev/null | tail -1)"
-if [ $EMULATE = 1 ]; then
+if [ $EMULATE = 1 ] && [ "$(uname -m)" != x86_64 ]; then
+  skip "not an x86-64 host: no Nehalem run"
+elif [ $EMULATE = 1 ]; then
   if command -v qemu-x86_64-static >/dev/null; then
     for b in ferry ferryd; do
       got=$(qemu-x86_64-static -cpu Nehalem -L / "$work/usr/bin/$b" --version 2>&1)
