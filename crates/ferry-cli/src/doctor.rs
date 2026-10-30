@@ -370,7 +370,7 @@ fn notifications(env: &Env) -> Check {
             "b true" => Check::pass(NAME, format!("{BUS_NAME} has an owner")),
             "b false" => Check::warn(
                 NAME,
-                format!("nothing owns {BUS_NAME}: ferry's notices are not shown"),
+                format!("nothing owns {BUS_NAME}: Ferry's notices are not shown"),
                 "omarchy restart shell   (the shell is Omarchy's notification daemon)",
             ),
             other => Check::warn(NAME, format!("busctl answered {other:?}"), ""),

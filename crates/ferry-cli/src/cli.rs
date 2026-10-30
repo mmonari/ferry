@@ -75,11 +75,11 @@ pub enum Command {
     /// settings, the firewall. Each step shows what it will change and asks once; a second run
     /// changes nothing.
     Setup(SetupArgs),
-    /// Open a view of ferry in the Omarchy shell: the Arrange, Pair or Settings panel, or the
+    /// Open a view of Ferry in the Omarchy shell: the Arrange, Pair or Settings panel, or the
     /// popover.
     ///
     /// It asks the running shell, so it works from a launcher entry or a Hyprland bind as well as
-    /// from a terminal; `omarchy-shell ferry arrange` does the same by hand. It needs the ferry
+    /// from a terminal; `omarchy-shell ferry arrange` does the same by hand. It needs the Ferry
     /// plugin, which `ferry setup` links and enables.
     Ui(UiArgs),
     /// Read and change the settings in config.toml through ferryd, which checks every value.

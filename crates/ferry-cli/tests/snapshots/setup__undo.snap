@@ -49,10 +49,10 @@ ferry setup --undo
   - 
   - -- ferry:begin go-binds
   - -- Go binds: move the keyboard and mouse to the machine on that side.
-  - hl.bind("SUPER + CTRL + ALT + LEFT", hl.dsp.exec_cmd("ferry go left"), { description = "ferry: go left" })
-  - hl.bind("SUPER + CTRL + ALT + RIGHT", hl.dsp.exec_cmd("ferry go right"), { description = "ferry: go right" })
-  - hl.bind("SUPER + CTRL + ALT + UP", hl.dsp.exec_cmd("ferry go up"), { description = "ferry: go up" })
-  - hl.bind("SUPER + CTRL + ALT + DOWN", hl.dsp.exec_cmd("ferry go down"), { description = "ferry: go down" })
+  - hl.bind("SUPER + CTRL + ALT + LEFT", hl.dsp.exec_cmd("ferry go left"), { description = "Ferry: go left" })
+  - hl.bind("SUPER + CTRL + ALT + RIGHT", hl.dsp.exec_cmd("ferry go right"), { description = "Ferry: go right" })
+  - hl.bind("SUPER + CTRL + ALT + UP", hl.dsp.exec_cmd("ferry go up"), { description = "Ferry: go up" })
+  - hl.bind("SUPER + CTRL + ALT + DOWN", hl.dsp.exec_cmd("ferry go down"), { description = "Ferry: go down" })
   - -- ferry:end go-binds
   apply? yes (--yes)
   backup: ~/.config/hypr/ferry.lua.ferry-bak.1800000000.3
@@ -65,7 +65,7 @@ ferry setup --undo
   - 
   - -- ferry:begin escape-bind
   - -- Escape bind: returns input to this machine even if ferryd hangs.
-  - hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "ferry: release input capture" })
+  - hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "Ferry: release input capture" })
   - -- ferry:end escape-bind
   --- ~/.config/hypr/hyprland.lua (remove the line setup added)
   - 

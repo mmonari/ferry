@@ -13,7 +13,7 @@ check_plugin_and_desktop() {
     skip "desktop-file-validate is not installed"
   fi
   must "the launcher entry opens the Arrange panel through ferry ui" grep -qx 'Exec=ferry ui arrange' "$desktop"
-  must "the launcher entry's icon is input-mouse" grep -qx 'Icon=input-mouse' "$desktop"
+  must "the launcher entry's icon is ferry-symbolic" grep -qx 'Icon=ferry-symbolic' "$desktop"
   must "the packaged plugin is plugin/, file for file, but for the developer README" diff -rq --exclude=README.md "$ROOT/plugin" "$plugin"
   must "the plugin folder holds no symlink (omarchy plugin validate refuses one)" test -z "$(find "$plugin" -type l)"
   if command -v omarchy-plugin-validate > /dev/null; then

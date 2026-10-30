@@ -219,9 +219,9 @@ test("every reason ferryd names has a title, and an unknown reason falls back wi
 
 test("a version mismatch and a save failure keep ferryd's own message, which holds the facts", () => {
   const v = Model.pairFailure("version", "version mismatch: 1.0 vs 2.0", { peer: "lap", stage: "failed" });
-  assert.equal(v.title, "The ferry versions do not match");
+  assert.equal(v.title, "The Ferry versions do not match");
   assert.equal(v.body, "Version mismatch: 1.0 vs 2.0");
-  assert.match(v.hint, /Update ferry on both machines/);
+  assert.match(v.hint, /Update Ferry on both machines/);
   const s = Model.pairFailure("save_failed", "could not save the pin: disk full", { stage: "failed" });
   assert.equal(s.body, "Could not save the pin: disk full");
 });

@@ -1,6 +1,6 @@
 # Packaging and install
 
-ferry ships as one Arch package, `ferry`, built from this checkout with `pkgbuild/PKGBUILD`.
+Ferry ships as one Arch package, `ferry`, built from this checkout with `pkgbuild/PKGBUILD`.
 
 | File | What |
 |------|------|
@@ -8,7 +8,7 @@ ferry ships as one Arch package, `ferry`, built from this checkout with `pkgbuil
 | `pkgbuild/ferry.install` | The messages pacman prints after install, upgrade and removal. |
 | `dist/systemd/ferryd.service` | The user unit, installed to `/usr/lib/systemd/user/`. |
 | `dist/ufw/ferry` | The ufw application profile `ferry` (4243/udp), installed to `/etc/ufw/applications.d/`. |
-| `dist/ferry.desktop` | The launcher entry "ferry", installed to `/usr/share/applications/`; it runs `ferry ui arrange`. |
+| `dist/ferry.desktop` | The launcher entry "Ferry", installed to `/usr/share/applications/`; it runs `ferry ui arrange`. |
 | `plugin/` | The omarchy-shell plugin `ferry.bar`, installed to `/usr/share/ferry/plugin/`; `ferry setup` links it. |
 | `bin/install` | `makepkg -fsi` in `pkgbuild/`. |
 | `scripts/pkg/check.sh` | What can be proven about a built package without root. |
@@ -96,7 +96,7 @@ that one line (and `pkgrel=1`), and commit.
   A file that the shell would not read (not JSON, no `"version": 1`, no `bar.layout`) is not touched:
   setup prints `omarchy plugin enable ferry.bar --section right` instead. With no `shell.json` at all,
   setup starts one from the shell's default (`$OMARCHY_PATH/config/omarchy/shell.json`), because a valid
-  user file replaces the default whole and a file with only ferry in it would empty the bar.
+  user file replaces the default whole and a file with only Ferry in it would empty the bar.
 
 A second run reports the step as skipped. `ferry setup --undo` takes the entry out (every section) and
 removes the link if it is the one setup made. `--dry-run` shows both changes and writes nothing.

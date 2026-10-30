@@ -53,7 +53,10 @@ pub fn binds_have_go_binds(json: &str, go: &GoChord) -> Result<bool, SetupError>
     Ok(ARROWS.iter().all(|(_, side)| {
         let description = format!("{GO_DESCRIPTION}{}", go_name(*side));
         binds.iter().any(|b| {
-            b["description"].as_str() == Some(description.as_str())
+            // Any case: binds written before 2026-10-30 read `ferry: go …`.
+            b["description"]
+                .as_str()
+                .is_some_and(|d| d.eq_ignore_ascii_case(&description))
                 && b["modmask"].as_u64() == Some(mask)
         })
     }))

@@ -238,7 +238,7 @@ FocusScope {
       spacing: Style.space(12)
 
       Hero {
-        glyph: Glyphs.state(root.hero.state)
+        glyph: Glyphs.travel(root.hero.state, root.hero.side)
         title: root.hero.title
         meta: root.hero.meta
         detail: root.hero.detail

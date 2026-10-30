@@ -24,13 +24,13 @@ dry run: every diff and command is shown, nothing is changed
   will do:
   --- ~/.config/systemd/user/ferryd.service (new file)
   + # Written by `ferry setup`; `ferry setup --undo` removes this file (ExecStart is this build's ferryd).
-  + # ferry daemon: one keyboard and mouse across Omarchy machines.
+  + # Ferry daemon: one keyboard and mouse across Omarchy machines.
   + #
   + # Packaged copy: /usr/lib/systemd/user/ferryd.service. `ferry setup` writes the same file to
   + # ~/.config/systemd/user/ferryd.service for a build without a package, with ExecStart= set to
   + # the ferryd next to the ferry that ran setup.
   + [Unit]
-  + Description=ferry daemon: one keyboard and mouse across Omarchy machines
+  + Description=Ferry daemon: one keyboard and mouse across Omarchy machines
   + PartOf=graphical-session.target
   + After=graphical-session.target
   + StartLimitIntervalSec=0
@@ -64,7 +64,7 @@ dry run: every diff and command is shown, nothing is changed
   + 
   + -- ferry:begin escape-bind
   + -- Escape bind: returns input to this machine even if ferryd hangs.
-  + hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "ferry: release input capture" })
+  + hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "Ferry: release input capture" })
   + -- ferry:end escape-bind
   --- ~/.config/hypr/hyprland.lua (append)
   + 
@@ -79,10 +79,10 @@ dry run: every diff and command is shown, nothing is changed
   + 
   + -- ferry:begin go-binds
   + -- Go binds: move the keyboard and mouse to the machine on that side.
-  + hl.bind("SUPER + CTRL + ALT + LEFT", hl.dsp.exec_cmd("ferry go left"), { description = "ferry: go left" })
-  + hl.bind("SUPER + CTRL + ALT + RIGHT", hl.dsp.exec_cmd("ferry go right"), { description = "ferry: go right" })
-  + hl.bind("SUPER + CTRL + ALT + UP", hl.dsp.exec_cmd("ferry go up"), { description = "ferry: go up" })
-  + hl.bind("SUPER + CTRL + ALT + DOWN", hl.dsp.exec_cmd("ferry go down"), { description = "ferry: go down" })
+  + hl.bind("SUPER + CTRL + ALT + LEFT", hl.dsp.exec_cmd("ferry go left"), { description = "Ferry: go left" })
+  + hl.bind("SUPER + CTRL + ALT + RIGHT", hl.dsp.exec_cmd("ferry go right"), { description = "Ferry: go right" })
+  + hl.bind("SUPER + CTRL + ALT + UP", hl.dsp.exec_cmd("ferry go up"), { description = "Ferry: go up" })
+  + hl.bind("SUPER + CTRL + ALT + DOWN", hl.dsp.exec_cmd("ferry go down"), { description = "Ferry: go down" })
   + -- ferry:end go-binds
   --- ~/.config/hypr/hyprland.lua (append)
   + 

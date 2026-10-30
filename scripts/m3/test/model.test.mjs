@@ -88,7 +88,7 @@ test("attention is derived from the raw facts, with a hint that tells the user w
   assert.equal(items.length, 1);
   assert.equal(items[0].code, "peer_refused");
   assert.equal(items[0].peer, "lap");
-  assert.match(items[0].hint, /Update ferry on lap/);
+  assert.match(items[0].hint, /Update Ferry on lap/);
 
   const changed = status({ peers: [peer("lap", FP_LAP, { state: "refused", detail: "fingerprint changed" })] });
   assert.match(Model.attentionOf(changed, null)[0].hint, /ferry unpair lap, then pair again/);
@@ -141,14 +141,14 @@ test("the tooltip of an away widget reads as FR-UI-16 words it", () => {
   assert.equal(w.state, "away");
   assert.equal(w.label, "travel");
   assert.equal(w.tone, "accent");
-  assert.equal(w.tooltip, "Input on travel · Super+Ctrl+Esc brings it back");
+  assert.equal(w.tooltip, "Steering travel · Super+Ctrl+Esc brings it back");
 });
 
 test("showPeerName=false drops the label and keeps the name in the tooltip", () => {
   const s = status({ role: "source", active_peer: { name: "travel", fingerprint: FP_LAP }, summary: { state: "away", peer: "travel" } });
   const w = Model.widget({ connected: true, status: s, showPeerName: false });
   assert.equal(w.label, "");
-  assert.match(w.tooltip, /Input on travel · Super\+Ctrl\+Esc brings it back/);
+  assert.match(w.tooltip, /Steering travel · Super\+Ctrl\+Esc brings it back/);
 });
 
 test("controlled shows the other machine too", () => {
@@ -156,7 +156,7 @@ test("controlled shows the other machine too", () => {
   const w = Model.widget({ connected: true, status: s });
   assert.equal(w.state, "controlled");
   assert.equal(w.label, "lap");
-  assert.match(w.tooltip, /^Controlled by lap/);
+  assert.match(w.tooltip, /^lap has the helm/);
 });
 
 test("off is the frontend's own state: dim, no label, and it says how to start ferryd", () => {
@@ -231,7 +231,7 @@ test("rows merge the live link, the pin and the layout, and put the pointer hold
   const rows = Model.peerRows(s, pins, layout, { state: "away", peer: "lap" }, Date.parse("2026-10-21T10:05:00Z"));
   assert.deepEqual(rows.map((r) => r.name), ["lap", "tower"]);
   assert.equal(rows[0].tone, "active");
-  assert.equal(rows[0].st, "Has the pointer");
+  assert.equal(rows[0].st, "You're steering");
   assert.equal(rows[0].lat, "0.4 ms");
   assert.equal(rows[0].kind, "laptop");
   assert.equal(rows[0].sub, "eDP-1 · 1800×1125 @ ×1.6");
@@ -265,7 +265,7 @@ test("a refused peer says why in our words, for a reason we know", () => {
   const rows = Model.peerRows(s, null, null, { state: "attention" }, 0);
   assert.equal(rows[0].tone, "lost");
   assert.equal(rows[0].lat, "Refused");
-  assert.equal(rows[0].st, "Another version of ferry");
+  assert.equal(rows[0].st, "Another version of Ferry");
 });
 
 test("a suspect peer is flagged, and a peer with two monitors is counted", () => {
@@ -293,7 +293,7 @@ test("the first-run card shows only when connected and nothing is paired", () =>
 test("the hero names the machine and the peer, and carries the latency while input travels", () => {
   const s = status({ role: "source", active_peer: { name: "lap", fingerprint: FP_LAP }, peers: [peer("lap", FP_LAP, { rtt_us: 400 })], summary: { state: "away", peer: "lap" } });
   const h = Model.hero({ connected: true, status: s });
-  assert.equal(h.title, "Controlling lap");
+  assert.equal(h.title, "Steering lap");
   assert.equal(h.detail, "0.4 ms");
   assert.equal(h.tone, "accent");
   // the second line is the key that brings input back, one entry per keycap
@@ -304,7 +304,7 @@ test("the hero names the machine and the peer, and carries the latency while inp
   assert.equal(idle.title, "Pair your first machine");
 
   const off = Model.hero({ connected: false, status: null });
-  assert.equal(off.title, "ferry is not running");
+  assert.equal(off.title, "Ferry is not running");
 });
 
 test("the attention hero says what is wrong in the cards below, and what the machine does underneath", () => {
@@ -316,7 +316,7 @@ test("the attention hero says what is wrong in the cards below, and what the mac
   const h = Model.hero({ connected: true, status: s, attention: s.attention });
   assert.equal(h.state, "attention");
   assert.equal(h.title, "Needs your attention");
-  assert.equal(h.meta, "Controlling lap");
+  assert.equal(h.meta, "Steering lap");
   assert.deepEqual(h.chord, [], "the attention hero names the problem, the keycaps stay in the footer");
   // under a problem a machine that is simply ready says where the pointer is, and not just "Ready"
   const ready = Model.hero({ connected: true, status: status({ summary: { state: "attention" }, attention: [{ code: "x", message: "y" }] }), attention: [{ code: "x", message: "y" }] });
@@ -347,5 +347,49 @@ test("ages are short and need no clock", () => {
 
 test("a missing string shows its key, never nothing", () => {
   assert.equal(Strings.t("no.such.key"), "no.such.key");
-  assert.equal(Strings.t("tip.away", ["lap", "Super+Ctrl+Esc"]), "Input on lap · Super+Ctrl+Esc brings it back");
+  assert.equal(Strings.t("tip.away", ["lap", "Super+Ctrl+Esc"]), "Steering lap · Super+Ctrl+Esc brings it back");
+});
+
+// ------------------------------------------------------------------------- the travel arrow
+
+// desk with two heads, lap under the left one, air to the left (a three-machine layout as it is used)
+const PLANE = {
+  peers: [
+    { name: "desk", self: true, origin: [0, 0], monitors: [{ name: "HDMI-A-1", x: 0, y: 0, w: 1920, h: 1080 }, { name: "DVI-D-1", x: 1920, y: 0, w: 1920, h: 1080 }] },
+    { name: "lap", origin: [554, 1080], monitors: [{ name: "eDP-1", x: 554, y: 1080, w: 1366, h: 768 }] },
+    { name: "air", origin: [-1440, 428], monitors: [{ name: "eDP-1", x: -1440, y: 428, w: 1440, h: 932 }] },
+    { name: "far", origin: [0, -3000], monitors: [{ name: "eDP-1", x: 100, y: -3000, w: 800, h: 600 }] },
+    { name: "loose", origin: null, monitors: [{ name: "eDP-1", x: 0, y: 0, w: 800, h: 600 }] }
+  ]
+};
+const fromAir = { peers: PLANE.peers.map((p) => ({ ...p, self: p.name === "air" })) };
+
+test("the arrow points at the other machine's side of the layout", () => {
+  assert.equal(Model.sideOf(PLANE, "air"), "left");
+  assert.equal(Model.sideOf(PLANE, "lap"), "down");
+  assert.equal(Model.sideOf(fromAir, "desk"), "right", "the controlled machine points back at the one that steers it");
+  // not touching: where its middle is
+  assert.equal(Model.sideOf(PLANE, "far"), "up");
+  // nothing to go by
+  assert.equal(Model.sideOf(PLANE, "loose"), "");
+  assert.equal(Model.sideOf(null, "air"), "");
+  assert.equal(Model.sideOf(PLANE, "nobody"), "");
+  // without a side the arrows are the old ones: out to the right, in from the left
+  assert.equal(Model.travelSide("away", null, "lap"), "right");
+  assert.equal(Model.travelSide("controlled", null, "lap"), "left");
+  assert.equal(Model.travelSide("ready", PLANE, "air"), "");
+});
+
+test("the widget, the hero and the row carry the side, and the glyphs follow it", () => {
+  const s = status({ role: "target", active_peer: { name: "desk", fingerprint: FP_LAP }, peers: [peer("desk", FP_LAP)], summary: { state: "controlled", peer: "desk" } });
+  const w = Model.widget({ connected: true, status: s, layout: fromAir });
+  assert.equal(w.side, "right");
+  assert.equal(Glyphs.travel(w.state, w.side).codePointAt(0), 0xf0734);
+  assert.equal(Model.hero({ connected: true, status: s, layout: fromAir }).side, "right");
+  const rows = Model.peerRows(s, { peers: [{ name: "desk", fingerprint: FP_LAP, state: "connected" }] }, fromAir, s.summary, 0);
+  assert.equal(rows[0].side, "right");
+  assert.equal(Glyphs.pointing(rows[0].side), Glyphs.ui("arrowRight"));
+  // a state that does not travel keeps its own glyph
+  assert.equal(Glyphs.travel("ready", "left"), Glyphs.state("ready"));
+  assert.equal(Glyphs.travel("away", ""), Glyphs.state("away"));
 });

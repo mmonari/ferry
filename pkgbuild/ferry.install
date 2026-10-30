@@ -4,7 +4,7 @@
 post_install() {
   cat <<'MSG'
 
-==> ferry is installed. As your own user (not root), run:
+==> Ferry is installed. As your own user (not root), run:
 
       ferry setup
 
@@ -19,7 +19,7 @@ MSG
 post_upgrade() {
   cat <<'MSG'
 
-==> ferry is upgraded. The ferryd that is running is still the old one. As your own user, run:
+==> Ferry is upgraded. The ferryd that is running is still the old one. As your own user, run:
 
       systemctl --user restart ferryd
 
@@ -31,7 +31,7 @@ MSG
 post_remove() {
   cat <<'MSG'
 
-==> ferry is removed. If you ran `ferry setup`, ferryd may still be enabled for your user. As your
+==> Ferry is removed. If you ran `ferry setup`, ferryd may still be enabled for your user. As your
     own user, run:
 
       systemctl --user disable --now ferryd

@@ -14,9 +14,10 @@ use tokio::sync::Notify;
 use super::toast::{Toast, Urgency};
 
 /// `app_name` of every notification.
-pub const APP_NAME: &str = "ferry";
-/// `app_icon` of every notification: a theme icon name, overridable later.
-pub const APP_ICON: &str = "input-mouse";
+pub const APP_NAME: &str = "Ferry";
+/// `app_icon` of every notification: the md-ferry mark the bar widget draws, installed by the
+/// package as `dist/icons/ferry-symbolic.svg`. The `-symbolic` name lets the shell tint it.
+pub const APP_ICON: &str = "ferry-symbolic";
 
 /// One notification to send: the arguments of `Notify`.
 pub(crate) struct Request {

@@ -127,7 +127,7 @@ fn a_machine_without_the_omarchy_shell_says_so() {
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(
         text(&out.stderr),
-        "error: omarchy-shell is not installed\n  hint: the ferry panels are a plugin for the Omarchy shell; other frontends read ferryd's socket instead\n"
+        "error: omarchy-shell is not installed\n  hint: the Ferry panels are a plugin for the Omarchy shell; other frontends read ferryd's socket instead\n"
     );
     assert!(out.stdout.is_empty());
 

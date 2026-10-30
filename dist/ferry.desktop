@@ -1,13 +1,13 @@
 [Desktop Entry]
 Type=Application
-Name=ferry
+Name=Ferry
 GenericName=Keyboard and mouse sharing
-Comment=Arrange screens, pair machines and tune ferry
+Comment=Arrange screens, pair machines and tune Ferry
 # `ferry ui` asks the running Omarchy shell to open the panel (the plugin's IPC target `ferry`, see
 # plugin/README.md); it works without a terminal and without $OMARCHY_PATH. It centres the panel on
 # the monitor that has the focus (FR-UI-18). Needs the plugin, which `ferry setup` links and enables.
 Exec=ferry ui arrange
-Icon=input-mouse
+Icon=ferry-symbolic
 Terminal=false
 StartupNotify=false
 Categories=Settings;HardwareSettings;

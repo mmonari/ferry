@@ -1,13 +1,13 @@
-# ferry
+# Ferry
 
 Share one keyboard and mouse between Hyprland machines on your local network. Push the pointer off
 the edge of one screen and it continues on the next machine; the keyboard follows the pointer.
 
-ferry is built only for **Hyprland on [Omarchy](https://omarchy.org/)**. It has a Rust daemon
+Ferry is built only for **Hyprland on [Omarchy](https://omarchy.org/)**. It has a Rust daemon
 (`ferryd`), a `ferry` command-line tool, and an Omarchy shell plugin for the bar.
 
 > **Status: 0.1.0, an early preview.** It is used daily between two machines. Expect rough edges,
-> and run the same ferry version on every machine.
+> and run the same Ferry version on every machine.
 
 ## Quick start
 
@@ -36,7 +36,7 @@ ferry setup          # shows each change and asks once
 ferry doctor         # every row should read PASS; each WARN or FAIL comes with its fix
 ```
 
-`ferry setup` puts the ferry widget on the bar, starts `ferryd`, adds the key bindings and offers
+`ferry setup` puts the Ferry widget on the bar, starts `ferryd`, adds the key bindings and offers
 to open UDP port 4243 in the firewall. Add `--dry-run` to see every change first.
 
 **3. Pair two machines.** On the first machine:
@@ -55,7 +55,7 @@ Both screens show the same 6-digit code. Confirm on both. The Pair panel on the 
 same (`ferry ui pair`). With three or more machines, pair every two of them: three machines
 take three pairings.
 
-**4. Arrange the screens** like they stand on your desk. Open the Arrange panel from the ferry
+**4. Arrange the screens** like they stand on your desk. Open the Arrange panel from the Ferry
 widget on the bar (or run `ferry ui arrange`), drag the monitors so their edges touch, and apply.
 From a terminal:
 
@@ -73,7 +73,7 @@ and mouse home.
 
 ## What it does
 
-![How ferry works: the source machine's ferryd captures input at the screen edge and sends it over QUIC with mutual TLS to the other machine's ferryd, which types it through virtual devices](docs/assets/architecture.svg)
+![How Ferry works: the source machine's ferryd captures input at the screen edge and sends it over QUIC with mutual TLS to the other machine's ferryd, which types it through virtual devices](docs/assets/architecture.svg)
 
 - **Edge crossings.** Arrange the machines' monitors on one shared layout. A pointer that leaves
   through a linked edge enters the next machine at the matching point.
@@ -89,7 +89,7 @@ and mouse home.
 ## Requirements
 
 - Omarchy 4.5 with Hyprland 0.56.2 (Lua config) and xdg-desktop-portal-hyprland 1.4.1, the
-  versions ferry is tested on.
+  versions Ferry is tested on.
 - Machines that can reach each other on **UDP port 4243**.
 - To build: Arch's `rust` package (edition 2024). `bin/install` pulls it in if it is missing.
 
@@ -101,10 +101,10 @@ and mouse home.
 | `ferry release` | The same, from a terminal. |
 | `ferry lock on` | No crossing starts from this machine until `ferry lock off`. |
 
-ferry also releases by itself:
+Ferry also releases by itself:
 
 - If a peer goes silent, held keys are released on the other machine within about 650 ms.
-- ferry never captures input while the screen is locked.
+- Ferry never captures input while the screen is locked.
 
 ## Commands
 
@@ -166,5 +166,5 @@ sudo pacman -R ferry
 
 ## License
 
-MIT, see [`LICENSE`](LICENSE). ferry includes code from
+MIT, see [`LICENSE`](LICENSE). Ferry includes code from
 [gliff](https://github.com/omacom/gliff) under the MIT License; see [`NOTICE`](NOTICE).

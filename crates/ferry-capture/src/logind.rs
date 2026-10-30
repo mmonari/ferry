@@ -62,7 +62,7 @@ impl Logind {
                 "Inhibit",
                 &(
                     "sleep",
-                    "ferry",
+                    "Ferry",
                     "release input capture before sleep",
                     "delay",
                 ),

@@ -63,7 +63,7 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    glyph: Glyphs.state(root.view.state)
+    glyph: Glyphs.travel(root.view.state, root.view.side)
     labelText: root.view.label
     tint: root.tint
     dot: root.view.dot

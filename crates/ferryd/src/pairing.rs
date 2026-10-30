@@ -1064,8 +1064,8 @@ fn dial_failure(addr: &str, e: PairError) -> DialFailure {
         PairError::Version => (
             err(
                 ErrorCode::PeerUnreachable,
-                format!("{addr} speaks another ferry protocol version"),
-                Some("update ferry on both machines to the same release"),
+                format!("{addr} speaks another Ferry protocol version"),
+                Some("update Ferry on both machines to the same release"),
             ),
             "version",
         ),

@@ -384,9 +384,9 @@ fn toasts_reach_a_notification_daemon_on_a_private_bus_and_survive_its_absence()
         seen,
         Seen {
             id: 100,
-            app_name: "ferry".into(),
+            app_name: "Ferry".into(),
             replaces_id: 0,
-            app_icon: "input-mouse".into(),
+            app_icon: "ferry-symbolic".into(),
             summary: "Pairing code 418 207".into(),
             // `&`, `<` and `>` of a peer's name are escaped for a daemon that renders markup
             body: "a&amp;b&lt;c&gt; is asking to pair. Confirm only if it shows the same code."

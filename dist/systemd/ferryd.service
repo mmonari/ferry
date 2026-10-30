@@ -1,10 +1,10 @@
-# ferry daemon: one keyboard and mouse across Omarchy machines.
+# Ferry daemon: one keyboard and mouse across Omarchy machines.
 #
 # Packaged copy: /usr/lib/systemd/user/ferryd.service. `ferry setup` writes the same file to
 # ~/.config/systemd/user/ferryd.service for a build without a package, with ExecStart= set to
 # the ferryd next to the ferry that ran setup.
 [Unit]
-Description=ferry daemon: one keyboard and mouse across Omarchy machines
+Description=Ferry daemon: one keyboard and mouse across Omarchy machines
 PartOf=graphical-session.target
 After=graphical-session.target
 StartLimitIntervalSec=0

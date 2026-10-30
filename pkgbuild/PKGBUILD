@@ -1,4 +1,4 @@
-# Maintainer: the ferry contributors
+# Maintainer: the Ferry contributors
 #
 # Builds the checkout this file sits in, in the shape of gliff's pkgbuild/ (MIT, credited in
 # NOTICE; ADR 0010 and 0011): `bin/install` runs
@@ -75,6 +75,8 @@ package() {
     install -Dm644 "$f" "$pkgdir/usr/share/ferry/$f"
   done < <(find plugin -type f ! -name README.md -print0)
   install -Dm644 dist/ferry.desktop "$pkgdir/usr/share/applications/ferry.desktop"
+  # The notification icon (crates/ferryd/src/notify/sink.rs `APP_ICON`).
+  install -Dm644 dist/icons/ferry-symbolic.svg "$pkgdir/usr/share/icons/hicolor/symbolic/apps/ferry-symbolic.svg"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
 }

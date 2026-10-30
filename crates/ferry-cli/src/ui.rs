@@ -69,7 +69,7 @@ impl UiError {
     pub fn hint(&self) -> Option<&'static str> {
         match self {
             Self::ShellMissing => Some(
-                "the ferry panels are a plugin for the Omarchy shell; other frontends read ferryd's socket instead",
+                "the Ferry panels are a plugin for the Omarchy shell; other frontends read ferryd's socket instead",
             ),
             Self::PluginNotLoaded(_) => {
                 Some("run ferry setup, which links and enables the ferry.bar plugin")

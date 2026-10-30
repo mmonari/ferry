@@ -70,6 +70,8 @@ var UI = {
   history: cp(0xF02DA),
   arrowRight: cp(0xF0054),
   arrowLeft: cp(0xF004D),
+  arrowUp: cp(0xF005D),
+  arrowDown: cp(0xF0045),
   plug: cp(0xF06A5),
   help: cp(0xF02D7),
   // the Arrange canvas
@@ -94,6 +96,27 @@ var NOTICE = {
 
 function state(key) {
   return STATE[key] || STATE.off;
+}
+
+// While input travels, the bold arrow points at the other machine's side of the layout (Model.travelSide),
+// so the bar and the hero show where control comes from or goes to.
+var TRAVEL = {
+  left: cp(0xF0731),   // md-arrow_left_bold
+  right: cp(0xF0734),  // md-arrow_right_bold
+  up: cp(0xF0737),     // md-arrow_up_bold
+  down: cp(0xF072E)    // md-arrow_down_bold
+};
+
+function travel(key, side) {
+  if ((key === "away" || key === "controlled") && TRAVEL[side]) return TRAVEL[side];
+  return state(key);
+}
+
+// The thin arrow of a peer row, by side.
+var POINTING = { left: "arrowLeft", right: "arrowRight", up: "arrowUp", down: "arrowDown" };
+
+function pointing(side) {
+  return UI[POINTING[side] || "arrowRight"];
 }
 
 function notice(kind) {

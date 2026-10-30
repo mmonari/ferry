@@ -42,10 +42,10 @@ test("the hero says one sentence per state, as the brief words them", () => {
   assert.equal(Model.hero({ connected: true, status: status() }).meta, "Pointer on desk · 1 machine connected");
 
   const away = Model.hero({ connected: true, status: status({ role: "source", active_peer: { name: "lap", fingerprint: FP_LAP } }) });
-  assert.equal(away.title, "Controlling lap");
+  assert.equal(away.title, "Steering lap");
 
   const controlled = Model.hero({ connected: true, status: status({ role: "target", active_peer: { name: "lap", fingerprint: FP_LAP } }) });
-  assert.equal(controlled.title, "lap is controlling this machine");
+  assert.equal(controlled.title, "lap has the helm");
 
   const locked = Model.hero({ connected: true, status: status({ locked: true }) });
   assert.equal(locked.title, "Locked to this machine");
@@ -160,7 +160,7 @@ test("each problem ferryd names gets the control that can fix it, or none", () =
   const items = Model.attentionActions([
     { code: "layout_unplaced", message: "tower is not placed in the layout", hint: "ferry layout place tower --right-of desk", peer: "tower" },
     { code: "config_invalid", message: "config.toml: unknown key", hint: "`ferry config get` shows what is saved" },
-    { code: "capture_denied", message: "Hyprland does not let ferry capture input", hint: "run `ferry setup` to allow xdph, then restart Hyprland" },
+    { code: "capture_denied", message: "Hyprland does not let Ferry capture input", hint: "run `ferry setup` to allow xdph, then restart Hyprland" },
     { code: "barriers_failed", message: "1 of 2 pointer barriers failed", hint: "`ferry release`, then check the monitors with `hyprctl monitors`" },
     { code: "escape_bind_missing", message: "The escape bind is not installed", hint: "Run ferry setup" },
     { code: "future_code", message: "something new", hint: "try `ferry frobnicate`" },
@@ -246,8 +246,8 @@ test("every kind of notice has its own glyph, and an unknown kind falls back to 
 // --------------------------------------------------------------------------------- strings
 
 test("a name containing a percent sign cannot be read as the next hole of a string", () => {
-  assert.equal(Strings.t("hero.away.title", ["100%2"]), "Controlling 100%2");
-  assert.equal(Strings.t("tip.away", ["a%2b", "Super+Ctrl+Esc"]), "Input on a%2b · Super+Ctrl+Esc brings it back");
+  assert.equal(Strings.t("hero.away.title", ["100%2"]), "Steering 100%2");
+  assert.equal(Strings.t("tip.away", ["a%2b", "Super+Ctrl+Esc"]), "Steering a%2b · Super+Ctrl+Esc brings it back");
   assert.equal(Strings.t("hero.idle.meta", [undefined]), "This machine · undefined offline");
 });
 

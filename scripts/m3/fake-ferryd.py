@@ -155,7 +155,7 @@ SCHEMA = [
     {"key": "discovery.mdns", "type": "bool", "default": True, "applies": "restart", "doc": "Look for other machines on the network", "available": False},
     {"key": "discovery.advertise", "type": "bool", "default": True, "applies": "restart", "doc": "Let other machines on the network find this one", "available": False},
     {"key": "safety.lock_check_budget_ms", "type": "int", "default": 50, "min": 50, "max": 100, "unit": "ms", "applies": "restart", "doc": "How long the screen-lock check may take before a crossing counts the screen as locked. A slow machine may need more"},
-    {"key": "notify.enabled", "type": "bool", "default": True, "applies": "live", "doc": "Show ferry's notifications on the desktop: the pairing code, a machine lost or back, a replaced layout, a problem that needs you. Off, they still reach the bar plugin"},
+    {"key": "notify.enabled", "type": "bool", "default": True, "applies": "live", "doc": "Show Ferry's notifications on the desktop: the pairing code, a machine lost or back, a replaced layout, a problem that needs you. Off, they still reach the bar plugin"},
 ]
 
 # The escape chord grammar of crates/ferry-core/src/chord.rs: modifier names (any of the aliases),
@@ -537,7 +537,7 @@ class World:
             self.attention = [
                 {"code": "peer_refused", "message": "lap cannot connect: fingerprint changed",
                  "hint": "run `ferry doctor`; after a key change, `ferry unpair lap` and pair again", "peer": "lap"},
-                {"code": "capture_denied", "message": "Hyprland does not let ferry capture input",
+                {"code": "capture_denied", "message": "Hyprland does not let Ferry capture input",
                  "hint": "run `ferry setup` to allow xdph in ~/.config/hypr/ferry.lua, then restart Hyprland, "
                          "which reads the rule only when it starts"},
             ]

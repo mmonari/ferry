@@ -14,7 +14,7 @@ import "../Strings.js" as Strings
 // FR-PAIR-10). Nothing here calls ferryd: it says what the user asked (`renameSubmitted`,
 // `unpairConfirmed`), the popover sends it, and `finishRename()` / `finishUnpair()` bring the answer back.
 //
-// The dot is a hint and never the message: the right-hand text says "Has the pointer",
+// The dot is a hint and never the message: the right-hand text says "You're steering",
 // "Offline · seen 5 min ago" or why a peer was refused, so the row reads the same in greyscale, and a
 // peer that holds the pointer carries an arrow that says which way input goes.
 Item {
@@ -233,14 +233,14 @@ Item {
               - (arrow.visible ? arrow.width + parent.spacing : 0))
           }
 
-          // which way input goes: out to this peer, or in from it
+          // where this peer sits in the layout, while input goes out to it or comes in from it
           Glyph {
             id: arrow
             visible: root.row.arrow === "away" || root.row.arrow === "controlled"
             anchors.verticalCenter: parent.verticalCenter
             width: Style.space(14)
             height: width
-            text: Glyphs.ui(root.row.arrow === "controlled" ? "arrowLeft" : "arrowRight")
+            text: Glyphs.pointing(root.row.side)
             fontFamily: root.fontFamily
             fontSize: Style.font.icon
             paintedSize: Style.font.icon * 0.9

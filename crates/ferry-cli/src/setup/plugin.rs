@@ -850,7 +850,7 @@ pub fn doctor_check(env: &Env) -> ferry_core::doctor::Check {
             return Check::warn(
                 NAME,
                 format!(
-                    "{} is not linked: the bar has no ferry widget",
+                    "{} is not linked: the bar has no Ferry widget",
                     link_path.display()
                 ),
                 "ferry setup",

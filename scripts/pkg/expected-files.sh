@@ -12,6 +12,7 @@ usr/bin/ferry
 usr/bin/ferryd
 usr/lib/systemd/user/ferryd.service
 usr/share/applications/ferry.desktop
+usr/share/icons/hicolor/symbolic/apps/ferry-symbolic.svg
 usr/share/licenses/ferry/LICENSE
 usr/share/licenses/ferry/NOTICE
 LIST

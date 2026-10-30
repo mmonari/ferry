@@ -443,7 +443,7 @@ test("an attention entry is a critical toast once, and not again for the same co
   assert.match(toast.body, /`ferry unpair lap`/);
   assert.equal(toast.peer, "lap");
   // the scene has two entries, and so two toasts
-  await c.until((e) => e.event === "notice" && e.data.kind === "attention" && e.data.title === "Hyprland does not let ferry capture input", 2000, at);
+  await c.until((e) => e.event === "notice" && e.data.kind === "attention" && e.data.title === "Hyprland does not let Ferry capture input", 2000, at);
   const again = c.mark();
   await c.call("fake.scene", { name: "ready" });
   await c.call("fake.scene", { name: "attention" });

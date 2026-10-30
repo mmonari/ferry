@@ -952,7 +952,7 @@ impl CaptureProblem {
         match self {
             Self::Denied(_) => Attention {
                 code: AttentionCode::CaptureDenied,
-                message: "Hyprland does not let ferry capture input".into(),
+                message: "Hyprland does not let Ferry capture input".into(),
                 hint: Some(format!(
                     "run `ferry setup` to allow xdph in ~/.config/hypr/ferry.lua, then {restart}"
                 )),
@@ -960,7 +960,7 @@ impl CaptureProblem {
             },
             Self::DialogPending => Attention {
                 code: AttentionCode::CaptureDenied,
-                message: "Hyprland will ask before ferry may capture input".into(),
+                message: "Hyprland will ask before Ferry may capture input".into(),
                 hint: Some(format!(
                     "answer its dialog at the first crossing, or run `ferry setup` to allow xdph and {restart}"
                 )),
@@ -1396,7 +1396,7 @@ mod tests {
         assert!(
             st.attention[0]
                 .message
-                .contains("does not let ferry capture")
+                .contains("does not let Ferry capture")
         );
         assert!(
             st.attention[0]

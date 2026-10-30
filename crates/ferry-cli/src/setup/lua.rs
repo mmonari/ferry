@@ -46,7 +46,7 @@ impl Block {
         match self {
             Block::EscapeBind => format!(
                 "-- Escape bind: returns input to this machine even if ferryd hangs.\n\
-                 hl.bind(\"{chord}\", hl.dsp.release_input_capture(), {{ allow_input_capture = true, description = \"ferry: release input capture\" }})\n",
+                 hl.bind(\"{chord}\", hl.dsp.release_input_capture(), {{ allow_input_capture = true, description = \"Ferry: release input capture\" }})\n",
                 chord = chords.escape
             ),
             Block::GoBinds => {
@@ -93,8 +93,8 @@ pub struct Chords {
     pub go: GoChord,
 }
 
-/// The description of each go bind, before the side: `ferry: go left`. Setup finds its binds by it.
-pub const GO_DESCRIPTION: &str = "ferry: go ";
+/// The description of each go bind, before the side: `Ferry: go left`. Setup finds its binds by it.
+pub const GO_DESCRIPTION: &str = "Ferry: go ";
 
 /// The `ferry go` word for a side, which is also the arrow key's name in Hyprland.
 pub fn go_name(side: Side) -> &'static str {
@@ -251,7 +251,7 @@ mod tests {
         let t = Block::GoBinds.text(&chords());
         for side in ["left", "right", "up", "down"] {
             let line = format!(
-                r#"hl.bind("SUPER + CTRL + ALT + {}", hl.dsp.exec_cmd("ferry go {side}"), {{ description = "ferry: go {side}" }})"#,
+                r#"hl.bind("SUPER + CTRL + ALT + {}", hl.dsp.exec_cmd("ferry go {side}"), {{ description = "Ferry: go {side}" }})"#,
                 side.to_ascii_uppercase()
             );
             assert!(t.contains(&line), "{line}\n{t}");
@@ -289,7 +289,7 @@ mod tests {
     fn the_bind_and_the_option_are_the_documented_lua() {
         let t = compose(&[Block::EscapeBind, Block::ReleasePressed], &chords());
         assert!(t.contains(
-            r#"hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "ferry: release input capture" })"#
+            r#"hl.bind("SUPER + CTRL + ESCAPE", hl.dsp.release_input_capture(), { allow_input_capture = true, description = "Ferry: release input capture" })"#
         ));
         assert!(t.contains(
             "hl.config({ input = { virtualkeyboard = { release_pressed_on_close = true } } })"

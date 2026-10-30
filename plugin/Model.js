@@ -134,7 +134,7 @@ function attentionOf(status, layout) {
     out.push({
       code: "peer_refused",
       message: p.name + ": " + detail,
-      hint: version ? "Update ferry on " + p.name : "ferry unpair " + p.name + ", then pair again",
+      hint: version ? "Update Ferry on " + p.name : "ferry unpair " + p.name + ", then pair again",
       peer: p.name
     });
   });
@@ -211,6 +211,58 @@ function monitorSummary(monitors, fallback) {
   var scale = Math.round(Number(m.scale) * 100) / 100;
   if (isFinite(scale) && scale > 0 && scale !== 1) text += " @ ×" + scale;
   return text;
+}
+
+// Where `peer` sits next to this machine on the layout plane: "left", "right", "up" or "down", or "" when
+// the layout cannot say (no layout yet, the peer not placed, no monitors). The side where the two share
+// the longest edge wins, so an L of monitors still points at the seam the pointer crosses; machines that
+// do not touch go by where the middle of one is from the middle of the other.
+function sideOf(layout, peer) {
+  var me = null, them = null;
+  list(layout && layout.peers).forEach(function (p) {
+    if (!p) return;
+    if (p.self === true) me = p;
+    else if (peer && p.name === peer && p.origin) them = p;
+  });
+  if (!me || !them) return "";
+  var mine = list(me.monitors), theirs = list(them.monitors);
+  if (mine.length === 0 || theirs.length === 0) return "";
+
+  function overlap(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
+  var shared = { left: 0, right: 0, up: 0, down: 0 };
+  mine.forEach(function (m) {
+    theirs.forEach(function (o) {
+      if (m.x + m.w === o.x) shared.right += overlap(m.y, m.y + m.h, o.y, o.y + o.h);
+      if (o.x + o.w === m.x) shared.left += overlap(m.y, m.y + m.h, o.y, o.y + o.h);
+      if (m.y + m.h === o.y) shared.down += overlap(m.x, m.x + m.w, o.x, o.x + o.w);
+      if (o.y + o.h === m.y) shared.up += overlap(m.x, m.x + m.w, o.x, o.x + o.w);
+    });
+  });
+  var best = "", most = 0;
+  ["left", "right", "up", "down"].forEach(function (k) { if (shared[k] > most) { best = k; most = shared[k]; } });
+  if (best) return best;
+
+  function middle(mons) {
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    mons.forEach(function (m) {
+      x0 = Math.min(x0, m.x); y0 = Math.min(y0, m.y);
+      x1 = Math.max(x1, m.x + m.w); y1 = Math.max(y1, m.y + m.h);
+    });
+    return [(x0 + x1) / 2, (y0 + y1) / 2];
+  }
+  var a = middle(mine), b = middle(theirs);
+  var dx = b[0] - a[0], dy = b[1] - a[1];
+  if (dx === 0 && dy === 0) return "";
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "right" : "left";
+  return dy > 0 ? "down" : "up";
+}
+
+// The way the arrow points while input travels: at the other machine, wherever the layout has it. A
+// layout that cannot say keeps the old arrows, out to the right when away and in from the left when
+// controlled.
+function travelSide(state, layout, peer) {
+  if (state !== "away" && state !== "controlled") return "";
+  return sideOf(layout, peer) || (state === "away" ? "right" : "left");
 }
 
 // Why a link was refused, from the words ferryd puts in the link's `detail` or the attention `message`:
@@ -292,6 +344,8 @@ function peerRows(status, peersResult, layout, summary, now) {
       tone: "ok",
       // "away": this machine drives it; "controlled": it drives this machine; "": neither
       arrow: "",
+      // where the arrow points: at this peer's place in the layout (travelSide)
+      side: "",
       locked: r.locked === true,
       suspect: r.suspect === true,
       paired: r.paired || "",
@@ -303,7 +357,10 @@ function peerRows(status, peersResult, layout, summary, now) {
     // Top right: the round trip, or the one word that says why there is none. Under it: what the
     // peer is doing, or since when it is gone.
     var drives = (sum.state === "away" || sum.state === "controlled") && sum.peer === out.name;
-    if (drives && out.state === "connected") out.arrow = sum.state;
+    if (drives && out.state === "connected") {
+      out.arrow = sum.state;
+      out.side = travelSide(sum.state, layout, out.name);
+    }
     if (out.state === "connected") {
       out.lat = rttText(out.rttUs);
       out.tone = "ok";
@@ -364,6 +421,8 @@ function widget(args) {
 
   var out = {
     state: state,
+    // the way the arrow points while input travels (travelSide), "" otherwise
+    side: connected ? travelSide(state, args.layout, peer) : "",
     label: "",
     tone: "normal",
     dim: false,
@@ -423,7 +482,7 @@ function widget(args) {
           out.hint += (out.hint ? "\n" : "") + Strings.t("tip.attention.more", [attention.length - 1]);
         }
       } else {
-        out.headline = "ferry needs you";
+        out.headline = "Ferry needs you";
       }
       break;
   }
@@ -454,7 +513,7 @@ function hero(args) {
     if (peers[i].name === peer && peers[i].state === "connected") rtt = rttText(peers[i].rtt_us);
   }
 
-  var out = { state: state, title: "", meta: "", detail: "", tone: "normal", detailTone: "normal", chord: [], chordTail: "" };
+  var out = { state: state, side: travelSide(state, args.layout, peer), title: "", meta: "", detail: "", tone: "normal", detailTone: "normal", chord: [], chordTail: "" };
   switch (state) {
     case "off":
       out.title = Strings.t("hero.off.title");

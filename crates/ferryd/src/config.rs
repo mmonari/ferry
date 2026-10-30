@@ -564,7 +564,7 @@ pub static KEYS: &[Key] = &[
         applies: Applies::Live,
         available: true,
         unit: None,
-        doc: "Show ferry's notifications on the desktop: the pairing code, a machine lost or back, a replaced layout, a problem that needs you. Off, they still reach the bar plugin",
+        doc: "Show Ferry's notifications on the desktop: the pairing code, a machine lost or back, a replaced layout, a problem that needs you. Off, they still reach the bar plugin",
     },
 ];
 
