@@ -18,7 +18,7 @@ Item {
   property var value
   property color foreground: Commons.Color.popups.text
   property string fontFamily: Style.font.family
-  property real fieldWidth: Style.space(spec && spec.unit === "bytes" ? 112 : 84)
+  property real fieldWidth: Style.space(spec && spec.unit === "bytes" ? 96 : 64)
   property string accessibleName: ""
   property alias field: input
 
@@ -78,6 +78,7 @@ Item {
       verticalPadding: Style.space(4)
       font.family: root.fontFamily
       font.pixelSize: Style.font.body
+      font.weight: Font.DemiBold
       font.features: { "tnum": 1 }
       selectByMouse: true
       activeFocusOnTab: true

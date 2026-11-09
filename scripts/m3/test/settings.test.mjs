@@ -82,6 +82,7 @@ test("the control follows the type and the range", () => {
     "clipboard.max_bytes": "number",
     "discovery.mdns": "toggle",
     "discovery.advertise": "toggle",
+    "safety.cross_while_locked": "toggle",
     "safety.lock_check_budget_ms": "slider",     // 50 to 100
     "notify.enabled": "toggle"
   });

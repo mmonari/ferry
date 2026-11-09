@@ -156,12 +156,16 @@ pub struct SafetySection {
     /// The lock check's budget, 50–100 ms. A slow machine may need more than 50; the
     /// active lock poll shortens and the Pending timeout grows with it ([`LockBudget`]).
     pub lock_check_budget_ms: u32,
+    /// Let a crossing start while this machine's screen is locked. Off by default:
+    /// the lock gate then refuses every crossing from the lock screen.
+    pub cross_while_locked: bool,
 }
 
 impl Default for SafetySection {
     fn default() -> Self {
         Self {
             lock_check_budget_ms: LockBudget::DEFAULT.millis(),
+            cross_while_locked: false,
         }
     }
 }
@@ -540,6 +544,18 @@ pub static KEYS: &[Key] = &[
         doc: "Let other machines on the network find this one",
     },
     Key {
+        key: "safety.cross_while_locked",
+        field: Field::Bool {
+            get: |c| c.safety.cross_while_locked,
+            set: |c, v| c.safety.cross_while_locked = v,
+        },
+        // `config.set` pushes the source config; the gate opens or shuts at once
+        applies: Applies::Live,
+        available: true,
+        unit: None,
+        doc: "Let the pointer cross to another machine while this machine's screen is locked. Keys typed then go to that machine. A lock that starts while you are on another machine still brings the pointer back",
+    },
+    Key {
         key: "safety.lock_check_budget_ms",
         field: Field::Int {
             min: LockBudget::MIN_MS as i64,
@@ -641,6 +657,7 @@ impl Config {
             go_chord: GoChord::parse(&c.go_chord)?,
             repeat_hold_after_ms,
             lock_check_budget: self.lock_check_budget(),
+            cross_while_locked: self.safety.cross_while_locked,
         })
     }
 
@@ -933,7 +950,7 @@ mod tests {
                 any::<bool>(),
                 any::<bool>(),
             ),
-            LockBudget::MIN_MS..=LockBudget::MAX_MS,
+            (LockBudget::MIN_MS..=LockBudget::MAX_MS, any::<bool>()),
             any::<bool>(),
         )
             .prop_map(
@@ -943,7 +960,7 @@ mod tests {
                     (res, dwell, dead, block),
                     (capture, invert),
                     (cb, max, mdns, adv),
-                    budget,
+                    (budget, cross_locked),
                     notify,
                 )| {
                     Config {
@@ -970,6 +987,7 @@ mod tests {
                         },
                         safety: SafetySection {
                             lock_check_budget_ms: budget,
+                            cross_while_locked: cross_locked,
                         },
                         notify: NotifySection { enabled: notify },
                     }

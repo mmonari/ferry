@@ -513,6 +513,139 @@ fn lock_during_capture() {
     assert_eq!(r.m.status().gate, Gate::Armed);
 }
 
+// ---- ADR 0020: `[safety] cross_while_locked` -----------------------------
+
+fn cross_while_locked() -> SourceConfig {
+    SourceConfig {
+        cross_while_locked: true,
+        ..SourceConfig::default()
+    }
+}
+
+fn enters(a: &[SourceAction]) -> bool {
+    a.iter().any(|a| {
+        matches!(
+            a,
+            SourceAction::Send {
+                msg: Control::Enter { .. },
+                ..
+            }
+        )
+    })
+}
+
+#[test]
+fn cross_while_locked_lets_a_locked_activation_cross() {
+    let mut r = Rig::with(first_light(), cross_while_locked());
+    // The screen locks while home: the gate stays armed, nothing is disabled.
+    assert!(r.ev(SourceEvent::LockPolled(LockCheck::Locked)).is_empty());
+    assert_eq!(r.m.status().gate, Gate::Armed);
+    let a = r.activate_with(800.0, 1081.0, LockCheck::Locked);
+    assert!(enters(&a), "{a:?}");
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+    assert_eq!(r.m.counters().lock_refusals, 0);
+    // The polls that follow, still locked, do not end the crossing.
+    r.ack_outstanding();
+    assert!(
+        !r.ev(SourceEvent::LockPolled(LockCheck::Locked))
+            .contains(&leave(1, LeaveReason::Locked))
+    );
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+}
+
+#[test]
+fn cross_while_locked_crosses_on_an_unknown_read() {
+    let mut r = Rig::with(first_light(), cross_while_locked());
+    let a = r.activate_with(800.0, 1081.0, LockCheck::Unknown);
+    assert!(enters(&a), "{a:?}");
+    assert_eq!(r.m.counters().lock_refusals, 0);
+}
+
+#[test]
+fn cross_while_locked_still_ends_a_crossing_when_the_lock_begins() {
+    let mut r = Rig::with(first_light(), cross_while_locked());
+    r.activate(800.0, 1081.0);
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+    let a = r.ev(SourceEvent::LockPolled(LockCheck::Locked));
+    assert_eq!(
+        a,
+        vec![
+            leave(1, LeaveReason::Locked),
+            release(r.activation, 800.0, 1077.0),
+        ]
+    );
+    // No Disable: the gate stays armed, and the next push crosses again.
+    assert_eq!(r.m.status().gate, Gate::Armed);
+    let a = r.activate_with(800.0, 1081.0, LockCheck::Locked);
+    assert!(enters(&a), "{a:?}");
+}
+
+#[test]
+fn cross_while_locked_arms_at_start_up_on_a_locked_screen() {
+    let mut m = SourceMachine::new(cross_while_locked());
+    let mut out = Actions::new();
+    let now = Micros::from_millis(10_000);
+    m.handle(SourceEvent::Topology(first_light()), now, &mut out);
+    m.handle(SourceEvent::PeerUp(netbook()), now, &mut out);
+    out.drain().for_each(drop);
+    m.handle(SourceEvent::LockPolled(LockCheck::Locked), now, &mut out);
+    let a: Vec<_> = out
+        .drain()
+        .filter(|a| !matches!(a, SourceAction::Status(_)))
+        .collect();
+    assert_eq!(a, vec![SourceAction::Portal(set_barriers(true))]);
+    m.handle(SourceEvent::BarriersSet { failed: vec![] }, now, &mut out);
+    assert!(
+        out.drain()
+            .any(|a| a == SourceAction::Portal(PortalCmd::Enable))
+    );
+    assert_eq!(m.status().gate, Gate::Armed);
+}
+
+#[test]
+fn turning_cross_while_locked_on_opens_a_locked_gate() {
+    let mut r = Rig::armed();
+    r.ev(SourceEvent::LockPolled(LockCheck::Locked));
+    assert_eq!(r.m.status().gate, Gate::Locked);
+    assert_eq!(
+        r.ev(SourceEvent::Config(cross_while_locked())),
+        vec![SourceAction::Portal(set_barriers(true))]
+    );
+    assert_eq!(
+        r.ev(SourceEvent::BarriersSet { failed: vec![] }),
+        vec![SourceAction::Portal(PortalCmd::Enable)]
+    );
+    assert_eq!(r.m.status().gate, Gate::Armed);
+}
+
+#[test]
+fn turning_cross_while_locked_off_ends_a_crossing_from_the_lock_screen() {
+    let mut r = Rig::with(first_light(), cross_while_locked());
+    r.ev(SourceEvent::LockPolled(LockCheck::Locked));
+    r.activate_with(800.0, 1081.0, LockCheck::Locked);
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+    let a = r.ev(SourceEvent::Config(SourceConfig::default()));
+    assert_eq!(
+        a,
+        vec![
+            leave(1, LeaveReason::Locked),
+            release(r.activation, 800.0, 1077.0),
+            SourceAction::Portal(PortalCmd::Disable)
+        ]
+    );
+    assert_eq!(r.m.status().gate, Gate::Locked);
+}
+
+#[test]
+fn turning_cross_while_locked_off_while_unlocked_changes_nothing() {
+    let mut r = Rig::with(first_light(), cross_while_locked());
+    assert!(
+        r.ev(SourceEvent::Config(SourceConfig::default()))
+            .is_empty()
+    );
+    assert_eq!(r.m.status().gate, Gate::Armed);
+}
+
 fn helds(a: &[SourceAction]) -> Vec<u32> {
     a.iter()
         .filter_map(|a| match a {

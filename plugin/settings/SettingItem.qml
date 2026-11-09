@@ -58,13 +58,17 @@ SettingRow {
         it = it.nextItemInFocusChain(true);
         continue;
       }
+      var inRow = false;
       for (var p = it; p; p = p.parent) {
-        if (p === row) {
+        if (p === row.controlSlot) {
           it.forceActiveFocus(Qt.TabFocusReason);
           return;
         }
+        if (p === row) inRow = true;
       }
-      return;
+      if (!inRow) return;
+      // a Copy of the note line comes before the control in the chain: go past it
+      it = it.nextItemInFocusChain(true);
     }
   }
 
@@ -75,7 +79,12 @@ SettingRow {
   help: Model.settingHelp(spec)
   // A key with nothing to choose never changes, so it has no moment to apply at.
   unavailable: spec && spec.available === false
-  appliesBadge: unavailable ? Strings.t("unavailable.badge") : (kind === "static" ? "" : applies.badge)
+  // Saving at once is the default and carries no badge (panel-ui.md rule 4): only Restart and Setup.
+  appliesBadge: unavailable ? Strings.t("unavailable.badge") : (kind === "static" || applies.id === "live" ? "" : applies.badge)
+  // A slider runs under the name; a chord being recorded needs the room for its words; the rest sit
+  // on the name's line.
+  inline: kind !== "slider" && !(kind === "chord" && recording)
+  headReserve: kind === "slider" && control.item ? control.item.entry.implicitWidth + Style.space(4) : 0
   // The badge is quiet until something has to be done: a saved change that waits for a restart, or
   // a chord that owes a ferry setup.
   appliesEmphasis: (applies.id === "restart" && pending) || (applies.id === "setup" && setupOwed)
@@ -150,7 +159,7 @@ SettingRow {
   // ---- the control
   Loader {
     id: control
-    width: parent.width
+    width: row.inline ? implicitWidth : parent.width
     sourceComponent: {
       switch (row.kind) {
         case "slider": return sliderControl;
@@ -174,6 +183,8 @@ SettingRow {
       fontFamily: row.fontFamily
       accessibleName: row.label
       refused: row.error !== null
+      entryAbove: true
+      entryCenterY: row.headCenter - row.slotTop
       onSteered: function (v) { row.steer(v) }
       onSettled: function (v) { row.settle(v) }
       onRejected: function (m) { row.reject(m) }
@@ -203,11 +214,13 @@ SettingRow {
     // The Loader sizes what it loads to its own width, so the dropdown sits in an Item and keeps
     // the width it asks for.
     Item {
-      height: dropdown.implicitHeight
+      implicitWidth: Style.space(220)
+      implicitHeight: dropdown.implicitHeight
+      height: implicitHeight
 
       Dropdown {
         id: dropdown
-        width: Math.min(parent.width, Style.space(280))
+        width: parent.width
         showLabel: false
         value: row.shown === undefined ? "" : String(row.shown)
         options: Model.choiceOptions(row.spec)
@@ -230,7 +243,7 @@ SettingRow {
       color: row.foreground
       font.family: row.fontFamily
       font.pixelSize: Style.font.body
-      font.bold: true
+      font.weight: Font.DemiBold
       Accessible.name: row.label
       Accessible.description: text
     }
@@ -239,9 +252,15 @@ SettingRow {
   Component {
     id: textControl
 
+    // in an Item that keeps its width, as the dropdown does
+    Item {
+    implicitWidth: Style.space(220)
+    implicitHeight: field.implicitHeight
+    height: implicitHeight
+
     TextField {
       id: field
-      width: Math.min(parent.width, Style.space(300))
+      width: Style.space(220)
       foreground: row.foreground
       verticalPadding: Style.space(4)
       font.family: row.fontFamily
@@ -289,6 +308,7 @@ SettingRow {
       }
 
       FocusRing {}
+    }
     }
   }
 

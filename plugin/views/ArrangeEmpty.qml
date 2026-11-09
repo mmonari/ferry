@@ -165,10 +165,11 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       text: Strings.t("arrange.empty.cta")
       iconText: Glyphs.ui("plus")
-      bordered: true
-      active: true
       focusable: true
-      foreground: root.foreground
+      // the one thing to do on an empty Screens tab: the filled action (rule 3)
+      background: Commons.Color.accent
+      accent: Commons.Color.accent
+      foreground: Commons.Color.popups.background
       fontFamily: root.fontFamily
       Accessible.name: text
       onClicked: root.pairRequested()

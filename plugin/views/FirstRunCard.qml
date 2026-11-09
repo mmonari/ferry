@@ -19,6 +19,8 @@ Column {
 
   readonly property color dim: Qt.darker(foreground, 1.4)
   property alias button: cta
+  // beside the Screens canvas the canvas has its own Pair button, and one is enough
+  property bool showButton: true
 
   width: parent ? parent.width : implicitWidth
   spacing: Style.space(10)
@@ -69,11 +71,14 @@ Column {
     width: parent.width
     spacing: Style.space(4)
 
-    Row {
+    // wraps: a narrow pane has no room for the sentence and its keys on one line
+    Flow {
+      width: parent.width
       spacing: Style.space(8)
 
       Text {
-        anchors.verticalCenter: parent.verticalCenter
+        height: firstCaps.height
+        verticalAlignment: Text.AlignVCenter
         textFormat: Text.PlainText
         text: Strings.t("escape.hint.lead")
         color: root.dim
@@ -82,7 +87,7 @@ Column {
       }
 
       Keycaps {
-        anchors.verticalCenter: parent.verticalCenter
+        id: firstCaps
         keys: root.chord
         foreground: root.foreground
         fontFamily: root.fontFamily
@@ -103,6 +108,7 @@ Column {
 
   Button {
     id: cta
+    visible: root.showButton
     width: parent.width
     text: Strings.t("first.cta")
     iconText: Glyphs.ui("plus")

@@ -61,10 +61,11 @@ ShellRoot {
   // it focused. (A focus scope hands the focus back to the item that had it, so the view is built
   // again, which is what a real opening does.)
   function reopen(done) {
+    Ferry.FerryUi.settingsGroup = "";
     card.view = "pair";
     later(150, function () {
       card.view = "settings";
-      waitFor(function () { return view() && Object.keys(view().items).length === 18; }, 4000, function (ok) {
+      waitFor(function () { return view() && Object.keys(view().items).length === 19; }, 4000, function (ok) {
         if (!ok) check("the view can be opened again", false, "items=" + (view() ? Object.keys(view().items).length : "no view"));
         done();
       });
@@ -110,7 +111,7 @@ ShellRoot {
   property var steps: [
     // ---- the view is up, from a fake daemon with the real schema
     function () {
-      waitFor(function () { return client.connected && client.configSchema && client.config && view() && Object.keys(view().items).length === 18; }, 6000, function (ok) {
+      waitFor(function () { return client.connected && client.configSchema && client.config && view() && Object.keys(view().items).length === 19; }, 6000, function (ok) {
         check("the view draws one setting per key of the schema", ok, "items=" + (view() ? Object.keys(view().items).length : "no view"));
         check("every key of the schema has a row", ok && client.configSchema.every(function (k) { return view().items[k.key] !== undefined; }), "");
         next();
@@ -123,13 +124,15 @@ ShellRoot {
       var seen = tabbed(30, true);
       var rows = [];
       seen.forEach(function (r) { if (r.indexOf(".") > 0 && rows.indexOf(r) < 0) rows.push(r); });
-      check("Tab reaches every setting that has a control (a row with one choice, or a feature not built yet, has nothing to focus)", rows.length === 14 && rows.indexOf("input.emulation") < 0 && rows.indexOf("discovery.mdns") < 0 && rows.indexOf("clipboard.enabled") > 0, rows.length + ": " + rows.join(", "));
+      var lastRow = rows[rows.length - 1];
+      check("Tab reaches every setting that has a control, group after group (a row with one choice, or a feature not built yet, has nothing to focus)", rows.length === 15 && rows.indexOf("input.emulation") < 0 && rows.indexOf("discovery.mdns") < 0 && rows.indexOf("clipboard.enabled") > 0, rows.length + ": " + rows.join(", "));
       check("the first Tab from the open view goes into the first setting, not the header", seen[0] === "crossing.edge_resistance_px", seen.slice(0, 3).join(" > "));
-      check("the header (tabs, close) comes after the last setting", seen.indexOf("ButtonGroup") > 0 && seen[seen.indexOf("ButtonGroup") + 1] === "PanelActionButton" && seen[seen.indexOf("ButtonGroup") - 1] === "safety.lock_check_budget_ms", seen.join(" > "));
-      check("and the chain comes back round to the first setting", seen.lastIndexOf("crossing.edge_resistance_px") > 0, seen.join(" > "));
+      var last = seen.lastIndexOf(lastRow, seen.indexOf("PanelActionButton")); // a slider and its number are two stops
+      check("the header (lock, close, tabs) comes after the last setting", last > 0 && seen[last + 1].indexOf(".") < 0 && seen.indexOf("PanelActionButton") > last && seen.indexOf("PanelActionButton") < last + 4, seen.join(" > "));
+      check("and the chain comes back round, through the group list, into the group on show", seen.lastIndexOf(lastRow) > seen.indexOf("PanelActionButton"), seen.join(" > "));
       reopen(function () {
         var back = tabbed(3, false);
-        check("Shift+Tab from the open view goes into the last setting and walks backwards", back[0] === "safety.lock_check_budget_ms" && back[2] === "peer.port", back.join(" < "));
+        check("Shift+Tab from the open view goes into the last setting of the group on show and walks backwards", back[0] === "crossing.edge_glow" && back[2] === "crossing.escape_chord", back.join(" < "));
         next();
       });
       });
@@ -149,7 +152,7 @@ ShellRoot {
         check("k on the first setting stays there: Up and Down never leave the settings (Tab does)", rowOf(focused()) === a && kind(focused()) === "QQuickItem", rowOf(focused()) + " / " + kind(focused()));
         reopen(function () {
           press(Qt.Key_Up);
-          check("Up from the open view enters the last setting", rowOf(focused()) === "safety.lock_check_budget_ms", rowOf(focused()));
+          check("Up from the open view enters the last setting of the group on show", rowOf(focused()) === "crossing.edge_glow", rowOf(focused()));
           next();
         });
       });
@@ -467,7 +470,7 @@ ShellRoot {
           check("the daemon goes away", gone, "");
           waitFor(function () { return client.connected && client.config && view() && client.configPending.length === 0; }, 8000, function (ok) {
             check("after the restart no key is pending, and the saved values are what runs", ok && cfg("discovery.mdns") === true && cfg("input.capture") === "portal", JSON.stringify(client.configPending) + " " + cfg("input.capture"));
-            check("the view comes back by itself", view() && Object.keys(view().items).length === 18, "");
+            check("the view comes back by itself", view() && Object.keys(view().items).length === 19, "");
             view().focusKey("peer.port");
             check("D-3: after the restart the port field shows the saved port", focused() && focused().text === String(cfg("peer.port")), "text=" + (focused() ? focused().text : "?") + " saved=" + cfg("peer.port"));
             check("D-3: after the restart the toggle shows the saved value", item("notify.enabled").checked === (cfg("notify.enabled") === true), "");

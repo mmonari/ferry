@@ -9,11 +9,11 @@ import "Glyphs.js" as Glyphs
 import "Model.js" as Model
 import "Strings.js" as Strings
 
-// The body of the popover (-05, -10): where the pointer is and what ends it, a pairing that
-// is running, what needs the user, the trusted peers with their latency (and rename, unpair and
-// Arrange behind a press), the lock, Release now, the way into Arrange, Pair and Settings, and what
-// ferryd said lately. It owns no window: Popover.qml puts it in the shell's KeyboardPanel, and the dev
-// harness (scripts/m3/harness) puts it in a plain card, so the same file is what gets photographed.
+// The right-hand pane of the Screens tab (-05, -10): where the pointer is and what ends it,
+// a pairing that is running, what needs the user, the trusted machines with their latency (rename and
+// unpair behind a press, or a click on the machine in the layout), clipboard sharing, Release now,
+// the escape chord, and what ferryd said lately. It owns no window: ArrangePanel puts it beside the
+// canvas, and the dev harness can draw it alone.
 //
 // Keyboard: Tab and Shift+Tab walk the controls, as do the arrow keys and j/k; Enter and Space press, and
 // Escape closes (an open row, a rename or a question closes first). Nothing shows a focus ring until a
@@ -21,9 +21,11 @@ import "Strings.js" as Strings
 FocusScope {
   id: root
 
-  // False while the popover is closed, so a closed popover costs no timers.
+  // False while the panel is closed, so a closed panel costs no timers.
   property bool shown: true
   signal closeRequested()
+  // the Screens tab's canvas has room for the layout: the pane does not repeat what the canvas shows
+  property bool besideCanvas: true
 
   readonly property string fontFamily: Style.font.family
   readonly property color fg: Commons.Color.popups.text
@@ -80,7 +82,7 @@ FocusScope {
     return ({});
   }
 
-  // every row closed (the next picture starts from a plain popover)
+  // every row closed (the next picture starts from a plain pane)
   function collapseAll() {
     root.keyboardNav = false;
     for (var i = 0; i < peerRepeater.count; i++) {
@@ -88,6 +90,27 @@ FocusScope {
       if (item) item.close(false);
     }
     root.openPeer = "";
+  }
+
+  // a machine picked on the canvas: its row opens, and the pane scrolls to it; this machine, or a
+  // machine that is not trusted, closes whatever was open
+  function selectPeer(fp) {
+    var item = fp !== "" ? root.peerItem(fp) : null;
+    if (!item) {
+      if (root.openPeer !== "") { var was = root.peerItem(root.openPeer); if (was) was.close(false); }
+      root.openPeer = "";
+      return;
+    }
+    root.openPeer = fp;
+    if (!item.open) item.openActions();
+    revealItem.target = item;
+    revealItem.restart();
+  }
+  Timer {
+    id: revealItem
+    property Item target: null
+    interval: 0
+    onTriggered: if (target) root.ensureVisible(target)
   }
 
   function peerItem(fp) {
@@ -98,17 +121,17 @@ FocusScope {
     return null;
   }
 
-  implicitWidth: Style.space(340)
+  implicitWidth: Style.space(300)
   // The natural height. The host may give less, and the content then scrolls.
   implicitHeight: column.implicitHeight
   focus: true
 
-  // Nothing is highlighted when the popover opens, whatever had the focus when it closed: the
+  // Nothing is highlighted when the panel opens, whatever had the focus when it closed: the
   // scope hands its focus to this item on close, and a key press then moves on from here.
   Item { id: rest }
   onShownChanged: if (!shown) rest.focus = true
 
-  // "seen 5 min ago" has to move on while the popover stays open, and a pairing counts seconds.
+  // "seen 5 min ago" has to move on while the panel stays open, and a pairing counts seconds.
   QtObject {
     id: clock
     property real now: Date.now()
@@ -172,9 +195,10 @@ FocusScope {
     onTriggered: root.ensureVisible(root.Window.activeFocusItem)
   }
 
+  // another tab of the same panel
   function openPanel(view) {
+    if (view === "arrange" || view === "screens") return;
     FerryUi.openPanel(view);
-    root.closeRequested();
   }
 
   // ----------------------------------------------------------------------- what a row asks for
@@ -274,6 +298,7 @@ FocusScope {
       FirstRunCard {
         id: firstRun
         visible: root.connected && FerryClient.firstRun
+        showButton: !root.besideCanvas
         chord: root.chordKeys
         foreground: root.fg
         fontFamily: root.fontFamily
@@ -322,7 +347,7 @@ FocusScope {
             others: root.rows.map(function (r) { return { name: r.name, fingerprint: r.fingerprint }; })
 
             onToggled: root.openPeer = modelData
-            onArrangeRequested: root.openPanel("arrange")
+            canArrange: false
             onRenameSubmitted: function (name) { root.renamePeer(modelData, name); }
             onUnpairConfirmed: root.unpairPeer(modelData)
 
@@ -349,33 +374,17 @@ FocusScope {
         width: parent.width
         spacing: Style.space(8)
 
-        Toggle {
-          id: lockToggle
-          width: parent.width
-          label: Strings.t("lock.label")
-          description: root.hero.state === "off" ? "" : Strings.t("lock.description")
-          checked: FerryClient.locked
-          foreground: root.fg
-          fontFamily: root.fontFamily
-          Accessible.name: label
-          onClicked: FerryClient.setLock(!FerryClient.locked)
-          FocusRing {}
-        }
-
-        Toggle {
+        SwitchRow {
           id: clipboardToggle
           visible: root.canConfig
           width: parent.width
           label: Strings.t("clipboard.label")
-          description: Strings.t("clipboard.description") + (root.clipboardAvailable ? "" : " " + Strings.t("unavailable.note"))
+          description: root.clipboardAvailable ? "" : Strings.t("unavailable.note")
           enabled: root.clipboardAvailable
-          opacity: root.clipboardAvailable ? 1 : 0.6
           checked: root.clipboardAvailable && root.canConfig && FerryClient.config["clipboard.enabled"] === true
           foreground: root.fg
           fontFamily: root.fontFamily
-          Accessible.name: label
           onClicked: FerryClient.setConfig("clipboard.enabled", !checked)
-          FocusRing {}
         }
 
         // only while input is away or controlled: there is nothing to release otherwise
@@ -399,41 +408,6 @@ FocusScope {
             FocusRing {}
           }
         }
-
-        Row {
-          width: parent.width
-          spacing: Style.space(8)
-
-          Button {
-            id: arrangeButton
-            width: (parent.width - parent.spacing) / 2
-            text: Strings.t("action.arrange")
-            iconText: Glyphs.ui("grid")
-            bordered: true
-            focusable: true
-            foreground: root.fg
-            fontFamily: root.fontFamily
-            fontSize: Style.font.bodySmall
-            Accessible.name: text
-            onClicked: root.openPanel("arrange")
-            FocusRing {}
-          }
-
-          Button {
-            id: pairButton
-            width: (parent.width - parent.spacing) / 2
-            text: Strings.t("action.pair")
-            iconText: Glyphs.ui("plus")
-            bordered: true
-            focusable: true
-            foreground: root.fg
-            fontFamily: root.fontFamily
-            fontSize: Style.font.bodySmall
-            Accessible.name: text
-            onClicked: root.openPanel("pair")
-            FocusRing {}
-          }
-        }
       }
 
       // ---- the one thing to know when something goes wrong; while input travels the hero says it
@@ -445,11 +419,14 @@ FocusScope {
           width: parent.width
           spacing: Style.space(4)
 
-          Row {
+          // wraps: the pane is narrower than the sentence and its keys
+          Flow {
+            width: parent.width
             spacing: Style.space(8)
 
             Text {
-              anchors.verticalCenter: parent.verticalCenter
+              height: chordCaps.height
+              verticalAlignment: Text.AlignVCenter
               textFormat: Text.PlainText
               text: Strings.t("escape.hint.lead")
               color: root.dim
@@ -458,7 +435,7 @@ FocusScope {
             }
 
             Keycaps {
-              anchors.verticalCenter: parent.verticalCenter
+              id: chordCaps
               keys: root.chordKeys
               foreground: root.fg
               fontFamily: root.fontFamily
@@ -487,46 +464,6 @@ FocusScope {
           items: root.activity
           foreground: root.fg
           fontFamily: root.fontFamily
-        }
-      }
-
-      PanelSeparator {
-        visible: root.connected
-        foreground: root.fg
-      }
-
-      // ---- footer
-      Item {
-        visible: root.connected
-        width: parent.width
-        height: Math.max(settingsButton.implicitHeight, versionText.implicitHeight)
-
-        Button {
-          id: settingsButton
-          anchors.left: parent.left
-          anchors.verticalCenter: parent.verticalCenter
-          text: Strings.t("action.settings")
-          iconText: Glyphs.ui("cog")
-          // flat, and no wider inset than the machines above it
-          horizontalPadding: Style.space(4)
-          focusable: true
-          foreground: root.fg
-          fontFamily: root.fontFamily
-          fontSize: Style.font.bodySmall
-          Accessible.name: text
-          onClicked: root.openPanel("settings")
-          FocusRing {}
-        }
-
-        Text {
-          id: versionText
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          textFormat: Text.PlainText
-          text: Strings.t("footer.version", [FerryClient.version])
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
         }
       }
     }

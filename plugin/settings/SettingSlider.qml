@@ -21,6 +21,10 @@ Item {
   property string accessibleName: ""
   property bool refused: false
   property alias entry: numberEntry
+  // The number sits above the track, at the right end of the row's name line (entryCenterY is that
+  // line's middle, in this item's coordinates), and the track takes the full width.
+  property bool entryAbove: false
+  property real entryCenterY: height / 2
 
   signal steered(var value)
   signal settled(var value)
@@ -32,7 +36,7 @@ Item {
   readonly property real live: slider.liveValue
 
   implicitWidth: Style.space(400)
-  implicitHeight: Math.max(track.implicitHeight, numberEntry.implicitHeight)
+  implicitHeight: entryAbove ? track.implicitHeight : Math.max(track.implicitHeight, numberEntry.implicitHeight)
 
   function clamp(v) {
     return Math.max(root.minimum, Math.min(root.maximum, Math.round(v)));
@@ -48,8 +52,8 @@ Item {
   Item {
     id: track
     anchors.left: parent.left
-    anchors.right: numberEntry.left
-    anchors.rightMargin: Style.space(14)
+    anchors.right: root.entryAbove ? parent.right : numberEntry.left
+    anchors.rightMargin: root.entryAbove ? 0 : Style.space(14)
     anchors.verticalCenter: parent.verticalCenter
     implicitHeight: slider.implicitHeight
     height: implicitHeight
@@ -97,7 +101,7 @@ Item {
   NumberEntry {
     id: numberEntry
     anchors.right: parent.right
-    anchors.verticalCenter: parent.verticalCenter
+    y: root.entryAbove ? root.entryCenterY - height / 2 : (root.height - height) / 2
     spec: root.spec
     value: root.value
     refused: root.refused

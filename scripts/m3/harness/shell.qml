@@ -45,6 +45,9 @@ ShellRoot {
       catch (e) { console.warn("harness: unreadable themes file: " + e); }
     }
     if (themes.length) applyTheme(themes[0].name);
+    // Commons loads the live theme from disk after this, over the one applied here: forget it, so the
+    // first step applies its theme again (else every step without a theme of its own showed the live one)
+    currentTheme = "";
     steps = buildSteps();
     console.log("harness: " + steps.length + " steps, output in " + out);
     start.start();
@@ -223,9 +226,6 @@ ShellRoot {
     pairStep("elsewhere", [hold({ connect_ms: 100, other_ms: 600000, name: "tower2" })], [fake("fake.pair_elsewhere", { role: "acceptor" }),
       fake("fake.pair_arrive", { addr: "198.51.100.88:4243" }), until(screenIs("code")),
       doit(function (h) { h.client.pairing = null; }), until(function (h) { return h.panel.flow.noCode; }), wait(300)]);
-    pairStep("trusted-rename", [], [doit(function (h) { h.panel.trustedItem(h.fp("lap")).askRename(); }), wait(250),
-      doit(function (h) { h.panel.trustedItem(h.fp("lap")).renameField.field.text = "laptop"; }), wait(150)]);
-    pairStep("trusted-unpair", [], [doit(function (h) { h.panel.trustedItem(h.fp("tower")).askUnpair(); }), wait(250)]);
     pairStep("light-start", [], [], { theme: "catppuccin-latte" });
     pairStep("light-code", [hold({ connect_ms: 100, other_ms: 600000 })], [dial("192.0.2.124"), until(screenIs("code")), wait(300)], { theme: "catppuccin-latte" });
     pairStep("light-done", [hold({ connect_ms: 100, other_ms: 200 })], [dial("192.0.2.124"), until(screenIs("code")), doit(function (h) { h.panel.answer(true); }), until(screenIs("paired")), wait(450)], { theme: "catppuccin-latte" });
@@ -237,7 +237,7 @@ ShellRoot {
     // ---- Settings (stream G). `settings` is what to do once the view is up: ["set", key, value] sends a
     // value as the user would, ["focus", key] puts the keyboard on a control, ["record", held...]
     // starts recording the escape chord, ["scroll", y] scrolls, ["show", key] scrolls a setting to the
-    // top. `fresh` builds the view again first,
+    // top, ["group", id] shows a group. `fresh` builds the view again first,
     // so the errors of one step are not on the screen of the next.
     var settingsViews = [
       ["", []],
@@ -448,6 +448,7 @@ ShellRoot {
       else if (op[0] === "record" && view.startRecording) view.startRecording("crossing.escape_chord", op.slice(1));
       else if (op[0] === "scroll" && view.scrollTo) view.scrollTo(op[1]);
       else if (op[0] === "show" && view.showKey) view.showKey(op[1]);
+      else if (op[0] === "group" && view.setGroup) view.setGroup(op[1]);
       waitMs(op[0] === "set" ? 350 : 200, next);
     };
     next();

@@ -34,7 +34,7 @@ FocusScope {
   signal chosen(string chord)
 
   implicitHeight: column.implicitHeight
-  implicitWidth: column.implicitWidth
+  implicitWidth: recording ? Style.space(320) : caps.implicitWidth + Style.space(8) + recordButton.implicitWidth
 
   function start() {
     held = [];

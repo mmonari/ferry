@@ -27,9 +27,10 @@ BorderSurface {
 
   width: parent ? parent.width : implicitWidth
   implicitHeight: body.implicitHeight + Style.space(36)
-  color: Style.normalFill
+  // flat (panel-ui.md rule 1): the digits carry it, with no box around them
+  color: "transparent"
   radius: Style.cornerRadius
-  borderSpec: Border.flat(Util.alpha(Commons.Color.accent, 0.7), Math.max(1, Style.space(2)))
+  borderSpec: Border.none()
   activeFocusOnTab: true
 
   Accessible.role: Accessible.StaticText

@@ -65,25 +65,17 @@ Column {
     width: parent.width
     spacing: Style.space(8)
 
-    BorderSurface {
-      anchors.horizontalCenter: parent.horizontalCenter
-      width: Math.min(parent.width, addr.implicitWidth + Style.space(44))
-      height: addr.implicitHeight + Style.space(18)
-      color: Style.normalFill
-      radius: Style.cornerRadius
-      borderSpec: Border.flat(Util.alpha(Commons.Color.accent, 0.6), 1)
-
-      Text {
-        id: addr
-        anchors.centerIn: parent
-        textFormat: Text.PlainText
-        text: root.address
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.heading
-        font.bold: true
-        font.features: { "tnum": 1 }
-      }
+    Text {
+      id: addr
+      width: parent.width
+      textFormat: Text.PlainText
+      text: root.address
+      color: root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.heading
+      font.bold: true
+      font.features: { "tnum": 1 }
+      horizontalAlignment: Text.AlignHCenter
     }
 
     CommandLine {

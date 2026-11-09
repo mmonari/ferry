@@ -3,11 +3,12 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import ".."
+import "../Strings.js" as Strings
 
-// One machine `discover.list` found, in the Pair panel's Nearby list: its name, where it is and whether it can
-// be chosen. A machine that is already trusted is shown and cannot be chosen. Choosing one puts its address in
-// the field; it does not start anything, so the user still presses Pair.
-BorderSurface {
+// One machine `discover.list` found, in the Pair tab's Nearby list: its name, where it is, and "Pair →" on the
+// right. A flat row (panel-ui.md rule 1): no border, a faint fill only under the pointer or the keyboard. A
+// machine that is already trusted is dim, says "Trusted" and cannot be chosen. Choosing one dials it.
+Rectangle {
   id: root
 
   // { name, addr, tag, trusted }, one entry of Model.nearbyRows()
@@ -16,70 +17,65 @@ BorderSurface {
   property color foreground: Commons.Color.popups.text
   property string fontFamily: Style.font.family
 
-  readonly property color dim: Qt.darker(foreground, 1.5)
+  readonly property color dim: Qt.darker(foreground, 1.4)
   readonly property bool choosable: entry.trusted !== true
 
   signal chosen()
 
   width: parent ? parent.width : implicitWidth
-  implicitHeight: Math.max(Style.space(30), line.implicitHeight + Style.space(12))
+  implicitHeight: Math.max(Style.space(34), name.implicitHeight + Style.space(14))
   radius: Style.cornerRadius
-  color: root.selected ? Style.selectedFillFor(root.foreground, Commons.Color.accent)
-    : (mouse.containsMouse && root.choosable ? Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent")
-  borderSpec: Border.controlSpec(root.selected ? "selected" : "normal", root.foreground, Commons.Color.accent)
-  opacity: root.choosable ? 1.0 : 0.55
+  color: root.choosable && (mouse.containsMouse || root.activeFocus || root.selected) ? Commons.Color.menu.selectedBackground : "transparent"
   activeFocusOnTab: root.choosable
 
-  Accessible.role: Accessible.RadioButton
-  Accessible.name: (entry.name || "") + ", " + (entry.addr || "") + ", " + (entry.tag || "")
-  Accessible.checked: root.selected
+  Accessible.role: Accessible.Button
+  Accessible.name: (entry.name || "") + ", " + (entry.addr || "") + ", " + (root.choosable ? Strings.t("pair.nearby.go") : (entry.tag || ""))
 
   Keys.onReturnPressed: if (root.choosable) root.chosen()
   Keys.onEnterPressed: if (root.choosable) root.chosen()
   Keys.onSpacePressed: if (root.choosable) root.chosen()
 
-  Row {
-    id: line
+  Text {
+    id: name
     anchors.left: parent.left
-    anchors.leftMargin: Style.space(10)
+    anchors.leftMargin: Style.space(8)
+    anchors.verticalCenter: parent.verticalCenter
+    width: Math.min(implicitWidth, (root.width - tag.width) * 0.42)
+    textFormat: Text.PlainText
+    text: root.entry.name || ""
+    color: root.choosable ? root.foreground : root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.body
+    font.weight: Font.DemiBold
+    elide: Text.ElideRight
+  }
+
+  Text {
+    anchors.left: name.right
+    anchors.leftMargin: Style.space(14)
     anchors.right: tag.left
     anchors.rightMargin: Style.space(10)
     anchors.verticalCenter: parent.verticalCenter
-    spacing: Style.space(8)
-
-    Text {
-      id: name
-      textFormat: Text.PlainText
-      text: root.entry.name || ""
-      color: root.foreground
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
-      font.bold: true
-      elide: Text.ElideRight
-      width: Math.min(implicitWidth, line.width * 0.55)
-    }
-
-    Text {
-      textFormat: Text.PlainText
-      text: root.entry.addr || ""
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
-      elide: Text.ElideRight
-      width: Math.max(0, line.width - name.width - line.spacing)
-    }
+    textFormat: Text.PlainText
+    text: root.entry.addr || ""
+    color: root.dim
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.bodySmall
+    font.features: { "tnum": 1 }
+    elide: Text.ElideRight
   }
 
   Text {
     id: tag
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(10)
+    anchors.rightMargin: Style.space(8)
     anchors.verticalCenter: parent.verticalCenter
     textFormat: Text.PlainText
-    text: root.entry.tag || ""
+    text: root.choosable ? Strings.t("pair.nearby.go") : (root.entry.tag || Strings.t("pair.nearby.trusted"))
     color: root.choosable ? Commons.Color.accent : root.dim
     font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Style.font.bodySmall
+    font.weight: root.choosable ? Font.DemiBold : Font.Normal
   }
 
   MouseArea {

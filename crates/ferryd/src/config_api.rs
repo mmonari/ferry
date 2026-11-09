@@ -362,7 +362,7 @@ pub async fn set(ctl: &Ctl, p: ConfigSetParams) -> Result<ConfigSetResult, ApiEr
             apply(&mut s.config, key, &value)?;
         }
     }
-    if key.parts().0 == "crossing" && ctl.capture_on {
+    if matches!(key.parts().0, "crossing" | "safety") && ctl.capture_on {
         crate::ctl::push_source_config(ctl).await;
     }
     if key.parts().0 == "clipboard" {

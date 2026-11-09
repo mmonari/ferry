@@ -9,6 +9,8 @@ Ferry is built only for **Hyprland on [Omarchy](https://omarchy.org/)**. It has 
 > **Status: 0.1.0, an early preview.** It is used daily between two machines. Expect rough edges,
 > and run the same Ferry version on every machine.
 
+![The Ferry panel, Screens tab: three machines' monitors on one layout, and on the right the trusted machines with their latency](docs/assets/screens/screens.png)
+
 ## Quick start
 
 You need two or more Omarchy machines on the same network. Do steps 1 and 2 on **every** machine.
@@ -51,12 +53,12 @@ Then, within 120 seconds, on the second machine:
 ferry pair <first-machine-host-or-ip>
 ```
 
-Both screens show the same 6-digit code. Confirm on both. The Pair panel on the bar does the
+Both screens show the same 6-digit code. Confirm on both. The Pair tab of the Ferry panel does the
 same (`ferry ui pair`). With three or more machines, pair every two of them: three machines
 take three pairings.
 
-**4. Arrange the screens** like they stand on your desk. Open the Arrange panel from the Ferry
-widget on the bar (or run `ferry ui arrange`), drag the monitors so their edges touch, and apply.
+**4. Arrange the screens** like they stand on your desk. Click the Ferry icon on the bar (or run
+`ferry ui arrange`), drag the monitors on the Screens tab so their edges touch, and apply.
 From a terminal:
 
 ```bash
@@ -81,10 +83,32 @@ and mouse home.
   machine on that side, or back home, without touching the pointer.
 - **Shared clipboard.** Copy text or an image on one machine, cross, and paste on the other.
   Only the list of types moves on a copy; the data moves when something pastes.
-- **Bar widget.** Shows the state of each peer. Its panels arrange the layout, pair machines and
-  change the settings.
+- **Bar widget and panel.** The icon shows where your keyboard and mouse are. Click it for one
+  panel with three tabs: Screens (the layout and your machines), Pair and Settings.
 - **Encrypted, LAN only.** Peers talk QUIC with mutual TLS 1.3. Each machine pins the other's key
   fingerprint when you pair them, and refuses everything else. There are no accounts and no cloud.
+
+## The panel
+
+Click the Ferry icon on the bar. The panel opens in the middle of the screen and follows your Omarchy
+theme. **Lock to this machine** is in its header on every tab.
+
+**Screens** is the shared layout. Drag a machine so its edges touch another one; the pointer
+crosses where they touch. Nothing is sent until you press **Apply**, which updates every machine.
+
+![Screens tab with an edited layout: Undo, Discard changes and Apply to all machines at the bottom](docs/assets/screens/screens-apply.png)
+
+**Pair** lists the machines nearby, or takes an address. A running pairing shows the code both
+machines must agree on.
+
+| Pair a machine | Compare the code (light theme) |
+|---|---|
+| ![Pair tab: nearby machines with a Pair action, an address field, and the pairing window on the right](docs/assets/screens/pair.png) | ![Pairing code 418 207 with Doesn't match and Match buttons](docs/assets/screens/pair-code-light.png) |
+
+**Settings** groups every option on the left. Most changes apply at once; a badge marks the few
+that need a restart of `ferryd` or a new `ferry setup`.
+
+![Settings tab: groups on the left, the Crossing settings on the right with sliders, a switch and the escape and go chords](docs/assets/screens/settings.png)
 
 ## Requirements
 
@@ -113,7 +137,7 @@ Ferry also releases by itself:
 | `ferry status` | This peer, each peer's link, and the current state |
 | `ferry go left\|right\|up\|down` | Move input to the machine on that side, or back home |
 | `ferry doctor` | Check this machine; prints a fix for every problem it finds |
-| `ferry ui arrange\|pair\|settings` | Open a panel of the bar widget |
+| `ferry ui arrange\|pair\|settings` | Open the Ferry panel on its Screens, Pair or Settings tab |
 | `ferry peers`, `ferry unpair` | List the pinned peers, or remove one |
 | `ferry id`, `ferry trust` | Pair by hand: print this machine's fingerprint, or pin another's |
 | `ferry clipboard on\|off\|toggle` | Share the clipboard with the other machines, or stop |
@@ -130,7 +154,7 @@ Every command takes `--json`. The socket API is documented in
 - **The machines don't connect.** Both must allow UDP port 4243. Omarchy's firewall blocks it until
   `ferry setup` opens it (`sudo ufw allow ferry`).
 - **The pointer stops at the edge.** Only edges that touch in the layout are links. Check with
-  `ferry layout show`, or open the Arrange panel.
+  `ferry layout show`, or look at the Screens tab of the Ferry panel.
 - **Logs:** `journalctl --user -u ferryd -f`.
 
 ## Update and uninstall

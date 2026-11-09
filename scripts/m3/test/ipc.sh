@@ -53,9 +53,9 @@ got=$(shell_ipc ferry state)
 [ "$got" = ready ] && ok "state answers ready" || bad "state answered '$got'"
 
 shell_ipc ferry arrange > /dev/null
-expect "arrange opens the panel on Arrange" '"panelOpen":true,"view":"arrange"'
+expect "arrange opens the panel on Screens" '"panelOpen":true,"view":"screens"'
 shell_ipc ferry arrange > /dev/null
-expect "arrange again leaves it open (a launcher entry never closes what it shows)" '"panelOpen":true,"view":"arrange"'
+expect "arrange again leaves it open (a launcher entry never closes what it shows)" '"panelOpen":true,"view":"screens"'
 shell_ipc ferry pair > /dev/null
 expect "pair switches to Pair" '"view":"pair"'
 shell_ipc ferry settings > /dev/null
@@ -104,7 +104,7 @@ if [ -x "$FERRY_BIN" ]; then
   expect "and the Settings panel is open" '"panelOpen":true,"view":"settings"'
   out=$("${env_shell[@]}" "$FERRY_BIN" ui arrange 2>&1); rc=$?
   [ "$rc" = 0 ] && ok "ferry ui arrange exits 0" || bad "ferry ui arrange exited $rc: $out"
-  expect "and it moves to Arrange" '"view":"arrange"'
+  expect "and it moves to Screens" '"view":"screens"'
   # a shell where the plugin is not loaded: the CLI says what to do
   out=$(env -u HYPRLAND_INSTANCE_SIGNATURE -u WAYLAND_DISPLAY XDG_RUNTIME_DIR="$SCR/run" OMARCHY_PATH="$SCR/omarchy" "$FERRY_BIN" ui nonsense 2>&1); rc=$?
   [ "$rc" = 2 ] && ok "an unknown view is a usage error (exit 2)" || bad "ferry ui nonsense exited $rc"

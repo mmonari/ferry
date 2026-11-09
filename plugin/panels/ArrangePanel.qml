@@ -9,6 +9,9 @@ import "../Geometry.js" as Geometry
 import "../Glyphs.js" as Glyphs
 import "../Strings.js" as Strings
 
+// The Screens tab, the panel's home (FR-UI-04..-07, -10, -17, journey J3). On the left the Arrange
+// canvas; on the right MachinesPane, what used to be the popover. The rest of this comment is the canvas's.
+//
 // The Arrange panel (-07, -10, -17, journey J3): every peer's monitors to scale on one plane,
 // dragged and nudged as whole machines, edited in a local draft until Apply sends one revision.
 //
@@ -33,6 +36,9 @@ FocusScope {
 
   // asks the panel's host to show another tab (the Pair panel, from the empty state)
   signal viewRequested(string view)
+
+  // false while the panel is closed (PanelCard binds it), so the machines pane stops its clocks
+  property bool shown: true
 
   readonly property color fg: Commons.Color.popups.text
   readonly property color dim: Qt.darker(fg, 1.4)
@@ -410,316 +416,286 @@ FocusScope {
   }
 
   // ---------------------------------------------------------------------------------- layout
-  Column {
-    id: top
+  // Two panes: the layout on the left, this machine and the trusted machines on
+  // the right. A machine picked on the canvas (pressed, or reached with Tab) opens its row on the right.
+  // The bar with Undo, Reset and Apply is there only while a draft differs from the live layout.
+  readonly property bool paneShown: FerryClient.connected
+  property alias pane: machines
+
+  function select(fp) {
+    var g = Arrange.groupBy(groups, fp);
+    machines.selectPeer(g && !g.self && g.trusted ? fp : "");
+  }
+
+  Connections {
+    target: canvasView
+    function onFocusedFpChanged() { if (canvasView.focusedFp !== "") root.select(canvasView.focusedFp); }
+    function onDragBegan(fp) { root.select(fp); }
+  }
+
+  Item {
+    id: left
     anchors.top: parent.top
     anchors.left: parent.left
-    anchors.right: parent.right
-    spacing: Style.space(8)
+    anchors.right: root.paneShown ? divider.left : parent.right
+    anchors.rightMargin: root.paneShown ? Style.space(16) : 0
+    anchors.bottom: bar.visible ? bar.top : parent.bottom
+    anchors.bottomMargin: bar.visible ? Style.space(10) : 0
 
-    Hero {
-      glyph: Glyphs.ui("grid")
-      title: Strings.t("panel.arrange.title")
-      meta: Strings.t("panel.arrange.meta")
-      // no layout number here: only whether this draft differs from the live layout
-      detail: root.mode === "arrange" && root.dirty ? Strings.t("arrange.edited") : ""
-      detailTone: root.banner !== null ? "urgent" : (root.dirty ? "accent" : "normal")
-      foreground: root.fg
-      fontFamily: root.fontFamily
-    }
+    Column {
+      id: top
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: parent.right
+      spacing: Style.space(8)
 
-    Text {
-      visible: root.mode === "arrange" && root.banner === null
-      width: parent.width
-      textFormat: Text.PlainText
-      text: root.canSet ? Strings.t("arrange.hint") : Strings.t("arrange.legacy")
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
-      wrapMode: Text.WordWrap
-      lineHeight: 1.15
-    }
-
-    ConflictBanner {
-      id: bannerView
-      visible: root.mode === "arrange" && root.banner !== null
-      title: root.banner !== null ? Arrange.bannerTitle(root.banner) : ""
-      body: root.banner !== null ? Arrange.bannerBody(root.banner) : ""
-      keepEnabled: !root.overlapping && !root.applying
-      foreground: root.fg
-      fontFamily: root.fontFamily
-      onKeepRequested: root.keepMine()
-      onTakeRequested: root.takeTheirs()
-    }
-  }
-
-  // ---- the stage between them: the canvas, or the reason there is none
-  Item {
-    id: stage
-    anchors.top: top.bottom
-    anchors.topMargin: Style.space(10)
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: root.mode === "arrange" ? bottom.top : parent.bottom
-    anchors.bottomMargin: root.mode === "arrange" ? Style.space(10) : 0
-
-    ArrangeCanvas {
-      id: canvasView
-      anchors.fill: parent
-      visible: root.mode === "arrange"
-      groups: root.groups
-      analysis: root.analysis
-      liveDrag: root.liveDrag
-      interactive: root.canSet && !root.applying
-      meName: FerryClient.meName
-
-      onDragBegan: function (fp) { root.dragBegan(fp); }
-      onDragMoved: function (fp, dx, dy, free) { root.dragMoved(fp, dx, dy, free); }
-      onDragEnded: function (fp) { root.dragEnded(fp); }
-      onNudgeRequested: function (fp, dir, mode) { root.nudge(fp, dir, mode); }
-    }
-
-    ArrangeEmpty {
-      anchors.fill: parent
-      visible: root.mode === "empty" || root.mode === "nomonitors"
-      group: root.groups.length === 1 ? root.groups[0] : null
-      title: root.mode === "nomonitors" ? Strings.t("arrange.nomonitors.title") : Strings.t("arrange.empty.title")
-      body: root.mode === "nomonitors" ? Strings.t("arrange.nomonitors.body") : Strings.t("arrange.empty.body")
-      note: root.parsed.waiting.length === 0 ? ""
-        : Strings.t(root.parsed.waiting.length > 1 ? "arrange.waiting.many" : "arrange.waiting",
-          [Arrange.joinNames(root.parsed.waiting.map(function (g) { return g.name; }))])
-      showButton: root.mode === "empty" && root.parsed.waiting.length === 0
-      foreground: root.fg
-      fontFamily: root.fontFamily
-      onPairRequested: root.viewRequested("pair")
-    }
-
-    OffCard {
-      visible: root.mode === "off"
-      anchors.centerIn: parent
-      width: Math.min(parent.width - Style.space(40), Style.space(420))
-      foreground: root.fg
-      fontFamily: root.fontFamily
-    }
-
-    Text {
-      visible: root.mode === "loading"
-      anchors.centerIn: parent
-      textFormat: Text.PlainText
-      text: Strings.t("arrange.loading")
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.body
-    }
-  }
-
-  Column {
-    id: bottom
-    visible: root.mode === "arrange"
-    anchors.bottom: parent.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
-    spacing: Style.space(10)
-
-    // ---- edge links, and the status
-    Item {
-      id: meta
-      width: parent.width
-      height: Math.max(linksColumn.implicitHeight, statusColumn.implicitHeight)
-
-      Column {
-        id: linksColumn
-        anchors.left: parent.left
-        anchors.top: parent.top
-        width: Math.round(parent.width * 0.6)
-        spacing: Style.space(3)
-
-        Item {
-          width: parent.width
-          height: linksHeader.implicitHeight
-
-          PanelSectionHeader {
-            id: linksHeader
-            anchors.left: parent.left
-            text: Strings.t("arrange.links")
-            foreground: root.fg
-            fontFamily: root.fontFamily
-          }
-        }
-
-        Repeater {
-          model: root.rows.slice(0, 3)
-
-          Row {
-            id: linkRow
-            required property var modelData
-            width: linksColumn.width
-            spacing: Style.space(6)
-            clip: true
-
-            Rectangle {
-              anchors.verticalCenter: parent.verticalCenter
-              width: Style.space(10)
-              height: Math.max(3, Style.space(3))
-              radius: height / 2
-              color: linkRow.modelData.kind === "link" ? Commons.Color.accent : Util.alpha(Commons.Color.accent, 0.4)
-            }
-
-            Text {
-              id: linkPrimary
-              anchors.verticalCenter: parent.verticalCenter
-              width: Math.min(implicitWidth, linkRow.width - Style.space(16))
-              textFormat: Text.PlainText
-              text: linkRow.modelData.primary
-              color: root.fg
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
-              elide: Text.ElideRight
-            }
-
-            Text {
-              anchors.verticalCenter: parent.verticalCenter
-              width: Math.max(0, linkRow.width - Style.space(10) - linkPrimary.width - linkRow.spacing * 2)
-              textFormat: Text.PlainText
-              text: linkRow.modelData.secondary + (linkRow.modelData.kind === "dormant" ? " · " + Strings.t("arrange.link.dormant") : "")
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-            }
-          }
-        }
-
-        Text {
-          visible: root.rows.length === 0
-          textFormat: Text.PlainText
-          text: Strings.t("arrange.links.none")
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-        }
-
-        Text {
-          visible: root.rows.length > 3
-          textFormat: Text.PlainText
-          text: Strings.t("arrange.links.more", [root.rows.length - 3])
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-        }
+      ConflictBanner {
+        id: bannerView
+        visible: root.mode === "arrange" && root.banner !== null
+        width: parent.width
+        title: root.banner !== null ? Arrange.bannerTitle(root.banner) : ""
+        body: root.banner !== null ? Arrange.bannerBody(root.banner) : ""
+        keepEnabled: !root.overlapping && !root.applying
+        foreground: root.fg
+        fontFamily: root.fontFamily
+        onKeepRequested: root.keepMine()
+        onTakeRequested: root.takeTheirs()
       }
 
-      Column {
-        id: statusColumn
-        anchors.right: parent.right
-        anchors.top: parent.top
-        width: parent.width - linksColumn.width - Style.space(14)
-        spacing: Style.space(3)
+      // the eyebrow: what this is on the left, what to do with it on the right
+      Item {
+        visible: root.mode === "arrange"
+        width: parent.width
+        height: eyebrow.implicitHeight
 
         PanelSectionHeader {
-          text: Strings.t("arrange.status")
+          id: eyebrow
+          anchors.left: parent.left
+          text: Strings.t("arrange.eyebrow")
           foreground: root.fg
           fontFamily: root.fontFamily
         }
 
-        BorderSurface {
-          width: parent.width
-          implicitHeight: statusRow.implicitHeight + Style.space(14)
-          height: implicitHeight
-          radius: Style.cornerRadius
-          color: root.status.tone === "err" ? Util.alpha(Commons.Color.urgent, 0.07) : "transparent"
-          // red only for what is wrong (overlap, a refusal); a warning (lonely, unplaced, untrusted)
-          // takes the accent, with the alert glyph (#28)
-          borderSpec: Border.flat(root.status.tone === "err" ? Util.alpha(Commons.Color.urgent, 0.6)
-            : (root.status.tone === "warn" ? Util.alpha(Commons.Color.accent, 0.6)
-              : (root.status.tone === "ok" ? Util.alpha(Commons.Color.accent, 0.6) : Util.alpha(root.fg, 0.15))), 1)
-
-          Accessible.role: root.status.tone === "err" || root.status.tone === "warn" ? Accessible.AlertMessage : Accessible.StaticText
-          Accessible.name: root.status.text
-
-          Row {
-            id: statusRow
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.margins: Style.space(8)
-            spacing: Style.space(6)
-
-            // a glyph for every tone: a problem is never colour alone
-            Text {
-              textFormat: Text.PlainText
-              text: Glyphs.ui(root.status.glyph === "alert" ? "alert" : (root.status.glyph === "check" ? "check" : "info"))
-              color: root.status.tone === "err" ? Commons.Color.urgent
-                : (root.status.tone === "ok" || root.status.tone === "warn" ? Commons.Color.accent : root.dim)
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.icon
-            }
-
-            Text {
-              width: parent.width - Style.space(24)
-              textFormat: Text.PlainText
-              text: root.status.text
-              color: root.status.tone === "err" ? Commons.Color.urgent : root.fg
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
-              wrapMode: Text.WordWrap
-              lineHeight: 1.1
-            }
-          }
+        Text {
+          anchors.right: parent.right
+          anchors.left: eyebrow.right
+          anchors.leftMargin: Style.space(12)
+          anchors.verticalCenter: eyebrow.verticalCenter
+          horizontalAlignment: Text.AlignRight
+          textFormat: Text.PlainText
+          text: root.canSet ? Strings.t("arrange.hint.short") : Strings.t("arrange.legacy")
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideRight
         }
       }
     }
 
-    // ---- undo, reset, apply
+    // ---- the canvas, or the reason there is none
     Item {
-      id: footer
-      width: parent.width
-      height: Math.max(applyButton.implicitHeight, undoButton.implicitHeight)
+      id: stage
+      anchors.top: top.bottom
+      anchors.topMargin: top.height > 0 ? Style.space(8) : 0
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: root.mode === "arrange" ? meta.top : parent.bottom
+      anchors.bottomMargin: root.mode === "arrange" ? Style.space(8) : 0
 
-      Button {
-        id: undoButton
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        text: Strings.t("arrange.undo")
-        iconText: Glyphs.ui("undo")
-        bordered: true
-        focusable: true
-        enabled: Arrange.canUndo(root.draft) && !root.applying
-        // nothing to undo or discard on a clean layout: the row then holds only Apply
-        visible: root.dirty
-        opacity: enabled ? 1 : 0.45
-        foreground: root.fg
-        fontFamily: root.fontFamily
-        fontSize: Style.font.bodySmall
-        Accessible.name: text
-        onClicked: root.undo()
-        FocusRing {}
+      ArrangeCanvas {
+        id: canvasView
+        anchors.fill: parent
+        visible: root.mode === "arrange"
+        groups: root.groups
+        analysis: root.analysis
+        liveDrag: root.liveDrag
+        interactive: root.canSet && !root.applying
+        meName: FerryClient.meName
+
+        onDragBegan: function (fp) { root.dragBegan(fp); }
+        onDragMoved: function (fp, dx, dy, free) { root.dragMoved(fp, dx, dy, free); }
+        onDragEnded: function (fp) { root.dragEnded(fp); }
+        onNudgeRequested: function (fp, dir, mode) { root.nudge(fp, dir, mode); }
       }
 
-      Button {
-        id: resetButton
-        anchors.left: undoButton.right
-        anchors.leftMargin: Style.space(8)
-        anchors.verticalCenter: parent.verticalCenter
-        text: Strings.t("arrange.reset", [root.rev])
-        iconText: Glyphs.ui("refresh")
-        bordered: true
-        focusable: true
-        enabled: root.dirty && !root.applying
-        visible: root.dirty
-        opacity: enabled ? 1 : 0.45
+      ArrangeEmpty {
+        anchors.fill: parent
+        visible: root.mode === "empty" || root.mode === "nomonitors"
+        group: root.groups.length === 1 ? root.groups[0] : null
+        title: root.mode === "nomonitors" ? Strings.t("arrange.nomonitors.title") : Strings.t("arrange.empty.title")
+        body: root.mode === "nomonitors" ? Strings.t("arrange.nomonitors.body") : Strings.t("arrange.empty.body")
+        note: root.parsed.waiting.length === 0 ? ""
+          : Strings.t(root.parsed.waiting.length > 1 ? "arrange.waiting.many" : "arrange.waiting",
+            [Arrange.joinNames(root.parsed.waiting.map(function (g) { return g.name; }))])
+        showButton: root.mode === "empty" && root.parsed.waiting.length === 0
         foreground: root.fg
         fontFamily: root.fontFamily
-        fontSize: Style.font.bodySmall
-        Accessible.name: text
-        onClicked: root.reset()
-        FocusRing {}
+        onPairRequested: root.viewRequested("pair")
+      }
+
+      OffCard {
+        visible: root.mode === "off"
+        anchors.centerIn: parent
+        width: Math.min(parent.width - Style.space(40), Style.space(420))
+        foreground: root.fg
+        fontFamily: root.fontFamily
       }
 
       Text {
-        anchors.left: resetButton.right
-        anchors.leftMargin: Style.space(12)
-        anchors.right: applyButton.left
+        visible: root.mode === "loading"
+        anchors.centerIn: parent
+        textFormat: Text.PlainText
+        text: Strings.t("arrange.loading")
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+    }
+
+    // ---- under the canvas: what the layout does now, in one line, and the edges that link machines
+    Column {
+      id: meta
+      visible: root.mode === "arrange"
+      anchors.bottom: parent.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      spacing: Style.space(4)
+
+      Row {
+        id: statusRow
+        width: parent.width
+        spacing: Style.space(6)
+        Accessible.role: root.status.tone === "err" || root.status.tone === "warn" ? Accessible.AlertMessage : Accessible.StaticText
+        Accessible.name: root.status.text
+
+        // a glyph for every tone: a problem is never colour alone
+        Text {
+          id: statusGlyph
+          anchors.verticalCenter: parent.verticalCenter
+          textFormat: Text.PlainText
+          text: Glyphs.ui(root.status.glyph === "alert" ? "alert" : (root.status.glyph === "check" ? "check" : "info"))
+          color: root.status.tone === "err" ? Commons.Color.urgent
+            : (root.status.tone === "ok" || root.status.tone === "warn" ? Commons.Color.accent : root.dim)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.icon
+        }
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          width: parent.width - statusGlyph.width - parent.spacing
+          textFormat: Text.PlainText
+          text: root.status.text
+          color: root.status.tone === "err" ? Commons.Color.urgent : root.fg
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          wrapMode: Text.WordWrap
+          maximumLineCount: 2
+          elide: Text.ElideRight
+        }
+      }
+
+      Repeater {
+        model: root.rows.slice(0, 3)
+
+        Row {
+          id: linkRow
+          required property var modelData
+          width: meta.width
+          spacing: Style.space(6)
+          clip: true
+
+          Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(10)
+            height: Math.max(3, Style.space(3))
+            radius: height / 2
+            color: linkRow.modelData.kind === "link" ? Commons.Color.accent : Util.alpha(Commons.Color.accent, 0.4)
+          }
+
+          Text {
+            id: linkPrimary
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.min(implicitWidth, linkRow.width - Style.space(16))
+            textFormat: Text.PlainText
+            text: linkRow.modelData.primary
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
+          }
+
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.max(0, linkRow.width - Style.space(10) - linkPrimary.width - linkRow.spacing * 2)
+            textFormat: Text.PlainText
+            text: linkRow.modelData.secondary + (linkRow.modelData.kind === "dormant" ? " · " + Strings.t("arrange.link.dormant") : "")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
+          }
+        }
+      }
+
+      Text {
+        visible: root.rows.length > 3
+        textFormat: Text.PlainText
+        text: Strings.t("arrange.links.more", [root.rows.length - 3])
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+    }
+  }
+
+  // ---- the right pane: this machine and the trusted machines
+  Rectangle {
+    id: divider
+    visible: root.paneShown
+    anchors.top: parent.top
+    anchors.bottom: bar.visible ? bar.top : parent.bottom
+    anchors.bottomMargin: bar.visible ? Style.space(10) : 0
+    anchors.right: machines.left
+    anchors.rightMargin: Style.space(16)
+    width: Math.max(1, Style.space(1))
+    color: Util.alpha(root.fg, 0.12)
+  }
+
+  MachinesPane {
+    id: machines
+    visible: root.paneShown
+    anchors.top: parent.top
+    anchors.right: parent.right
+    anchors.bottom: bar.visible ? bar.top : parent.bottom
+    anchors.bottomMargin: bar.visible ? Style.space(10) : 0
+    width: Style.space(300)
+    shown: root.shown
+  }
+
+  // ---- the draft's bar: only while there is something to apply, undo or explain
+  Item {
+    id: bar
+    visible: root.mode === "arrange" && (root.dirty || root.applying || root.applyError !== null)
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    height: footer.height + Style.space(10)
+
+    PanelSeparator {
+      anchors.top: parent.top
+      width: parent.width
+      foreground: root.fg
+    }
+
+    Item {
+      id: footer
+      anchors.bottom: parent.bottom
+      width: parent.width
+      height: Math.max(applyButton.implicitHeight, undoButton.implicitHeight)
+
+      Text {
+        anchors.left: parent.left
+        anchors.right: undoButton.left
         anchors.rightMargin: Style.space(12)
         anchors.verticalCenter: parent.verticalCenter
         textFormat: Text.PlainText
@@ -735,17 +711,54 @@ FocusScope {
       }
 
       Button {
+        id: undoButton
+        anchors.right: resetButton.left
+        anchors.rightMargin: Style.space(4)
+        anchors.verticalCenter: parent.verticalCenter
+        text: Strings.t("arrange.undo")
+        iconText: Glyphs.ui("undo")
+        focusable: true
+        enabled: Arrange.canUndo(root.draft) && !root.applying
+        opacity: enabled ? 1 : 0.45
+        foreground: root.fg
+        fontFamily: root.fontFamily
+        fontSize: Style.font.bodySmall
+        Accessible.name: text
+        onClicked: root.undo()
+        FocusRing {}
+      }
+
+      Button {
+        id: resetButton
+        anchors.right: applyButton.left
+        anchors.rightMargin: Style.space(8)
+        anchors.verticalCenter: parent.verticalCenter
+        text: Strings.t("arrange.reset", [root.rev])
+        bordered: true
+        focusable: true
+        enabled: root.dirty && !root.applying
+        opacity: enabled ? 1 : 0.45
+        foreground: root.fg
+        fontFamily: root.fontFamily
+        fontSize: Style.font.bodySmall
+        Accessible.name: text
+        onClicked: root.reset()
+        FocusRing {}
+      }
+
+      // the one filled action of the tab: it commits the draft to every machine
+      Button {
         id: applyButton
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         text: root.applying ? Strings.t("arrange.apply.busy") : Strings.t("arrange.apply")
         iconText: Glyphs.ui("check")
-        bordered: true
-        active: true
         focusable: true
         enabled: root.canApply
         opacity: enabled ? 1 : 0.45
-        foreground: root.fg
+        background: Commons.Color.accent
+        accent: Commons.Color.accent
+        foreground: Commons.Color.popups.background
         fontFamily: root.fontFamily
         fontSize: Style.font.bodySmall
         Accessible.name: text

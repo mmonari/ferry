@@ -36,7 +36,10 @@ BarWidget {
   PanelController { id: controller }
 
   // A tooltip shown before the click stays up until the pointer leaves: take it down on open.
-  onOpenedChanged: if (opened && root.bar && root.bar.hideTooltip) root.bar.hideTooltip(button)
+  onOpenedChanged: {
+    if (opened && root.bar && root.bar.hideTooltip) root.bar.hideTooltip(button);
+    FerryUi.panelShown();
+  }
 
   // ---------------------------------------------------------------------------- what to draw
   // `showPeerName` is this widget's one setting, on its layout entry in shell.json (default on).
@@ -68,8 +71,8 @@ BarWidget {
     tint: root.tint
     dot: root.view.dot
     dimmed: root.view.dim
-    // The shell's tooltip is centred under the button, so the open popover covers its text and
-    // leaves an empty rounded outline beside it (D-4). No tooltip while the popover is open.
+    // The shell's tooltip is centred under the button, so the open panel covers its text and
+    // leaves an empty rounded outline beside it (D-4). No tooltip while the panel is open.
     tooltipText: root.opened ? "" : root.view.tooltip
     description: root.view.tooltip
 
@@ -78,20 +81,20 @@ BarWidget {
     }
   }
 
-  // The popover is a layer-shell window, and a file that names a window type cannot even be
+  // The panel is a layer-shell window, and a file that names a window type cannot even be
   // compiled where there is no layer-shell (the offscreen dev harness, a nested test). It is made
-  // here, by URL, so that failing costs this widget its popover and nothing else.
-  property var popover: null
+  // here, by URL, so that failing costs this widget its panel and nothing else.
+  property var panel: null
 
-  function makePopover() {
-    var component = Qt.createComponent(Qt.resolvedUrl("Popover.qml"));
+  function makePanel() {
+    var component = Qt.createComponent(Qt.resolvedUrl("PanelHost.qml"));
     if (component.status !== Component.Ready) {
-      console.info("ferry: no popover window here: " + component.errorString().split("\n")[0]);
+      console.info("ferry: no panel window here: " + component.errorString().split("\n")[0]);
       return;
     }
     // `bar` is a binding, not a value: the shell hands it to this widget after it is built, and a
-    // popover made with null would place itself in the screen's corner for good.
-    root.popover = component.createObject(root, {
+    // panel made with null would place itself in the screen's corner for good.
+    root.panel = component.createObject(root, {
       anchorItem: button,
       owner: root,
       bar: Qt.binding(function () { return root.bar; }),
@@ -102,10 +105,10 @@ BarWidget {
 
   Component.onCompleted: {
     FerryUi.attach(root);
-    makePopover();
+    makePanel();
   }
   Component.onDestruction: {
     FerryUi.detach(root);
-    if (root.popover) root.popover.destroy();
+    if (root.panel) root.panel.destroy();
   }
 }

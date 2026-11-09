@@ -7,11 +7,13 @@ import "../views"
 import "../Glyphs.js" as Glyphs
 import "../Strings.js" as Strings
 
-// The frame every setting sits in: its name and when it applies, ferryd's own one-line help, the
-// control (put into the default slot), a line for ferryd's refusal, and a line for what still has
-// to happen (a restart, or ferry setup). It decides nothing; SettingItem fills it in.
+// The frame every setting sits in, one line of a flat hairline list (docs/design/panel-ui.md rule 2):
+// the name on the left, the control on the right of the same line (`inline`), or under it at full
+// width (a slider), then ferryd's own help as one dim line, a line for ferryd's refusal, and a line
+// for what still has to happen (a restart, or ferry setup). No border and no fill, except the urgent
+// border of a row in error. It decides nothing; SettingItem fills it in.
 //
-// A toggle row is one big button, like the shell's Toggle: the whole card takes the click, Enter
+// A toggle row is one big button, like the shell's Toggle: the whole row takes the click, Enter
 // and Space, and the switch is only the picture of the state.
 BorderSurface {
   id: root
@@ -35,6 +37,14 @@ BorderSurface {
   // What still has to happen, and the command that does it (copied, never run from here).
   property string note: ""
   property string noteCommand: ""
+  // The control sits on the name's line, at the right (true), or under it at full width (false).
+  property bool inline: true
+  // Room kept at the right end of the name's line for something the control puts there (a slider's
+  // number), and the line's height, so the control can line up with it.
+  property real headReserve: 0
+  readonly property real headHeight: head.height
+  readonly property real slotTop: slot.y
+  readonly property real headCenter: column.y + head.height / 2
 
   property color foreground: Commons.Color.popups.text
   property string fontFamily: Style.font.family
@@ -44,21 +54,22 @@ BorderSurface {
   readonly property bool isSettingRow: true
   default property alias content: slot.data
   property alias resetButton: resetBtn
+  readonly property Item controlSlot: slot
 
   signal clicked()
   signal resetClicked()
 
-  readonly property bool hot: toggle && mouse.containsMouse
   readonly property real gap: Style.space(8)
+  readonly property real pad: Style.space(10)
 
   enabled: !unavailable
   opacity: unavailable ? 0.6 : 1
   width: parent ? parent.width : implicitWidth
-  implicitHeight: column.implicitHeight + Style.space(20)
+  implicitHeight: column.implicitHeight + 2 * pad
   height: implicitHeight
   radius: Style.cornerRadius
-  color: toggle ? Style.controlFill(activeFocus, hot, foreground, Commons.Color.accent) : Style.normalFill
-  borderSpec: Border.controlSpec(toggle && activeFocus ? "focus" : (hot ? "hover-cursor" : "normal"), foreground, Commons.Color.accent)
+  color: "transparent"
+  borderSpec: root.error !== null ? Border.flat(Commons.Color.urgent, 1) : Border.flat("transparent", 0)
 
   activeFocusOnTab: toggle && !unavailable
   Keys.onReturnPressed: if (toggle) root.clicked()
@@ -71,9 +82,7 @@ BorderSurface {
   Accessible.checkable: toggle
   Accessible.checked: checked
 
-  Behavior on color { ColorAnimation { duration: Fx.ms(100) } }
-
-  // The whole card is the button of a toggle row. Under the controls, so a Reset press is its own.
+  // The whole row is the button of a toggle row. Under the controls, so a Reset press is its own.
   MouseArea {
     id: mouse
     anchors.fill: parent
@@ -88,16 +97,16 @@ BorderSurface {
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
-    anchors.margins: Style.space(10)
-    anchors.leftMargin: Style.space(12)
-    anchors.rightMargin: Style.space(12)
+    anchors.topMargin: root.pad
+    anchors.leftMargin: root.error !== null ? Style.space(8) : 0
+    anchors.rightMargin: root.error !== null ? Style.space(8) : 0
     spacing: Style.space(6)
 
-    // ---- name, when it applies, reset, and the switch of a toggle row
+    // ---- name, when it applies, reset, the switch of a toggle row, and an inline control
     Item {
       id: head
       width: parent.width
-      height: Math.max(title.implicitHeight, tail.implicitHeight)
+      height: Math.max(title.implicitHeight, tail.implicitHeight, root.inline ? slot.height : 0, Style.space(26))
 
       Text {
         id: title
@@ -109,8 +118,7 @@ BorderSurface {
         text: root.label
         color: root.foreground
         font.family: root.fontFamily
-        font.pixelSize: Style.font.subtitle
-        font.bold: true
+        font.pixelSize: Style.font.body
         wrapMode: Text.WordWrap
         maximumLineCount: 2
         elide: Text.ElideRight
@@ -119,6 +127,7 @@ BorderSurface {
       Row {
         id: tail
         anchors.right: parent.right
+        anchors.rightMargin: root.inline ? (slot.width > 0 ? slot.width + Style.space(12) : 0) : root.headReserve
         anchors.verticalCenter: parent.verticalCenter
         spacing: Style.space(8)
 
@@ -141,9 +150,9 @@ BorderSurface {
           iconText: Glyphs.ui("undo")
           tooltipText: root.resetTip
           focusable: true
-          foreground: root.foreground
+          foreground: root.dim
           fontFamily: root.fontFamily
-          fontSize: Style.font.bodySmall
+          fontSize: Style.font.caption
           verticalPadding: Style.space(2)
           horizontalPadding: Style.space(6)
           Accessible.name: Strings.t("settings.reset") + ": " + root.label
@@ -158,7 +167,7 @@ BorderSurface {
           anchors.verticalCenter: parent.verticalCenter
           checked: root.checked
           interactive: false
-          // the keyboard focus rings the switch too, not only the card (#39)
+          // the keyboard focus rings the switch too, not only the row (#39)
           cursorRing: true
           cursorPad: Style.space(3)
           hasCursor: root.toggle && root.activeFocus
@@ -181,7 +190,15 @@ BorderSurface {
       }
     }
 
-    // ---- ferryd's own sentence about the key
+    // ---- room for a control under the name (a slider)
+    Item {
+      id: slotSpace
+      width: parent.width
+      visible: !root.inline && !root.toggle
+      height: visible ? slot.height : 0
+    }
+
+  // ---- ferryd's own sentence about the key
     Text {
       width: parent.width
       visible: text !== ""
@@ -192,13 +209,8 @@ BorderSurface {
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
       lineHeight: 1.15
-    }
-
-    // ---- the control
-    Column {
-      id: slot
-      width: parent.width
-      visible: !root.toggle
+      maximumLineCount: 2
+      elide: Text.ElideRight
     }
 
     // ---- ferryd said no: its words and its hint, with a glyph, so it is not colour alone
@@ -302,6 +314,16 @@ BorderSurface {
       foreground: root.foreground
       fontFamily: root.fontFamily
     }
+  }
+
+  // ---- the control: after the head in the focus chain, drawn on the name's line or under it
+  Item {
+    id: slot
+    visible: !root.toggle
+    x: root.inline ? column.x + column.width - width : column.x
+    y: root.inline ? column.y + head.y + (head.height - height) / 2 : column.y + slotSpace.y
+    width: root.inline ? childrenRect.width : column.width
+    height: childrenRect.height
   }
 
   FocusRing { target: root; visible: root.toggle && root.activeFocus }

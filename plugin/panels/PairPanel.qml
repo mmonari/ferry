@@ -19,8 +19,9 @@ import "../Strings.js" as Strings
 // remembers (what the user asked, that they pressed Cancel, the last attempt that failed), so a panel
 // opened by the "Pairing code" notification lands on the code, one opened later lands on its start,
 // and the code that every connection hears can be answered from here, from a terminal or from the
-// notification, whichever comes first. Below the flow: the machines this one trusts, with
-// Rename and Unpair behind a question.
+// notification, whichever comes first. The start screen is two flat panes;
+// a running pairing takes the whole tab: the step bar, then the screen for its stage. The machines this one
+// trusts are managed on the Screens tab.
 //
 // The functions a button calls (dial, accept, answer, cancel, retry, dismiss) are public: the dev
 // harness and the integration test press the same ones.
@@ -376,6 +377,15 @@ FocusScope {
     anchors.left: parent.left
     anchors.right: parent.right
     spacing: Style.space(14)
+    // the idle start screen needs neither: the tab already says Pair, and nothing runs yet
+    visible: root.screen !== "start"
+    height: visible ? implicitHeight : 0
+
+    StepBar {
+      steps: root.flow.steps
+      foreground: root.fg
+      fontFamily: root.fontFamily
+    }
 
     Hero {
       glyph: Glyphs.ui(root.flow.hero.glyph)
@@ -386,18 +396,12 @@ FocusScope {
       detailTone: root.flow.hero.detailTone
       foreground: root.fg
     }
-
-    StepBar {
-      steps: root.flow.steps
-      foreground: root.fg
-      fontFamily: root.fontFamily
-    }
   }
 
   Flickable {
     id: scroller
     anchors.top: head.bottom
-    anchors.topMargin: Style.space(16)
+    anchors.topMargin: head.visible ? Style.space(16) : 0
     anchors.bottom: footer.top
     anchors.bottomMargin: Style.space(10)
     anchors.left: parent.left
@@ -511,11 +515,9 @@ FocusScope {
         id: differButton
         visible: root.screen === "code"
         text: Strings.t("pair.code.differ")
-        iconText: Glyphs.ui("close")
         bordered: true
         focusable: true
-        // the error tone, so it never reads as a plain Cancel (#33)
-        foreground: Commons.Color.urgent
+        foreground: root.fg
         fontFamily: root.fontFamily
         Accessible.name: text
         onClicked: root.answer(false)
@@ -526,12 +528,12 @@ FocusScope {
         id: matchButton
         visible: root.screen === "code"
         text: Strings.t("pair.code.match")
-        iconText: Glyphs.ui("check")
-        bordered: true
-        // the accent fill marks the one answer that goes on (#33)
-        background: Util.alpha(Commons.Color.accent, 0.28)
+        // the one answer that commits: filled (panel-ui.md rule 3)
+        background: Commons.Color.accent
+        // filled in every state: the kit's hover and focus fills would wash the label out
+        color: hot || activeFocus ? Qt.darker(Commons.Color.accent, 1.12) : Commons.Color.accent
         focusable: true
-        foreground: root.fg
+        foreground: Commons.Color.popups.background
         fontFamily: root.fontFamily
         Accessible.name: text
         onClicked: root.answer(true)
@@ -543,10 +545,11 @@ FocusScope {
         visible: root.screen === "failed" || root.screen === "closed"
         text: Strings.t(root.screen === "closed" || root.flow.role === "acceptor" ? "pair.again.accept" : "pair.retry")
         iconText: Glyphs.ui("refresh")
-        bordered: true
-        active: true
+        background: Commons.Color.accent
+        // filled in every state: the kit's hover and focus fills would wash the label out
+        color: hot || activeFocus ? Qt.darker(Commons.Color.accent, 1.12) : Commons.Color.accent
         focusable: true
-        foreground: root.fg
+        foreground: Commons.Color.popups.background
         fontFamily: root.fontFamily
         Accessible.name: text
         onClicked: root.retry()
@@ -558,10 +561,11 @@ FocusScope {
         visible: root.screen === "paired"
         text: Strings.t("pair.done.arrange")
         iconText: Glyphs.ui("grid")
-        bordered: true
-        active: true
+        background: Commons.Color.accent
+        // filled in every state: the kit's hover and focus fills would wash the label out
+        color: hot || activeFocus ? Qt.darker(Commons.Color.accent, 1.12) : Commons.Color.accent
         focusable: true
-        foreground: root.fg
+        foreground: Commons.Color.popups.background
         fontFamily: root.fontFamily
         Accessible.name: text
         onClicked: root.arrangeNow()
@@ -583,41 +587,30 @@ FocusScope {
       function focusAddress() { start.focusAddress(); }
 
 
-      // ferryd is not running: say so, and how to start it, above cards that cannot work
-      BorderSurface {
+      // ferryd is not running: say so, and how to start it, above controls that cannot work
+      Column {
         width: parent.width
         visible: !FerryClient.connected
-        implicitHeight: offBody.implicitHeight + Style.space(24)
-        color: Util.alpha(Commons.Color.urgent, 0.07)
-        radius: Style.cornerRadius
-        borderSpec: Border.flat(Util.alpha(Commons.Color.urgent, 0.6), 1)
+        spacing: Style.space(8)
 
-        Column {
-          id: offBody
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.top: parent.top
-          anchors.margins: Style.space(12)
-          spacing: Style.space(8)
-
-          Text {
-            width: parent.width
-            textFormat: Text.PlainText
-            text: Strings.t("pair.dial.unavailable")
-            color: root.fg
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            font.bold: true
-            wrapMode: Text.WordWrap
-          }
-
-          CommandLine {
-            width: parent.width
-            command: Strings.t("off.cmd")
-            foreground: root.fg
-            fontFamily: root.fontFamily
-          }
+        Text {
+          width: parent.width
+          textFormat: Text.PlainText
+          text: Glyphs.ui("alert") + "  " + Strings.t("pair.dial.unavailable")
+          color: Commons.Color.urgent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+          wrapMode: Text.WordWrap
         }
+
+        CommandLine {
+          width: parent.width
+          command: Strings.t("off.cmd")
+          foreground: root.fg
+          fontFamily: root.fontFamily
+        }
+
+        PanelSeparator { foreground: root.fg }
       }
 
       PairStart {
@@ -641,16 +634,18 @@ FocusScope {
         width: parent.width
         visible: root.flow.lastFailure !== null
         textFormat: Text.PlainText
-        text: root.flow.lastFailure ? Strings.t("pair.last.failed", [root.flow.lastFailure.title]) : ""
+        text: root.flow.lastFailure ? Glyphs.ui("alert") + "  " + Strings.t("pair.last.failed", [root.flow.lastFailure.title]) : ""
         color: Commons.Color.urgent
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.WordWrap
       }
 
+      // Not shown: trusted machines are managed on the Screens tab. Built still, hidden, because the UI and
+      // real-daemon tests (scripts/m3/test/Ui.qml, Real.qml) rename and unpair through trustedItem().
       TrustedList {
         id: trustedList
-        visible: FerryClient.connected
+        visible: false
         rows: root.rows
         untrusted: root.untrusted
         canRename: root.canRename
@@ -661,6 +656,8 @@ FocusScope {
         onUnpairRequested: function (fp) { root.unpairPeer(fp); }
         onPairRequested: function (name) { start.focusAddress(); }
       }
+
+      PanelSeparator { foreground: root.fg }
 
       Text {
         width: parent.width
@@ -683,28 +680,17 @@ FocusScope {
       spacing: Style.space(14)
 
       // the last attempt did not work, and the window is still open
-      BorderSurface {
+      Text {
         width: Math.min(parent.width, Style.space(560))
         anchors.horizontalCenter: parent.horizontalCenter
         visible: root.flow.lastFailure !== null
-        implicitHeight: failure.implicitHeight + Style.space(20)
-        color: Util.alpha(Commons.Color.urgent, 0.07)
-        radius: Style.cornerRadius
-        borderSpec: Border.flat(Util.alpha(Commons.Color.urgent, 0.6), 1)
-
-        Text {
-          id: failure
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.margins: Style.space(10)
-          textFormat: Text.PlainText
-          text: root.flow.lastFailure ? Strings.t("pair.last.failed", [root.flow.lastFailure.title]) + " " + Strings.t("pair.last.failed.open") : ""
-          color: root.fg
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          wrapMode: Text.WordWrap
-        }
+        textFormat: Text.PlainText
+        text: root.flow.lastFailure ? Glyphs.ui("alert") + "  " + Strings.t("pair.last.failed", [root.flow.lastFailure.title]) + " " + Strings.t("pair.last.failed.open") : ""
+        color: Commons.Color.urgent
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
       }
 
       PairWait {
@@ -776,12 +762,11 @@ FocusScope {
         width: Math.min(parent.width, Style.space(520))
         anchors.horizontalCenter: parent.horizontalCenter
         textFormat: Text.PlainText
-        text: root.flow.role === "acceptor"
-          ? Strings.t("pair.code.accept", [root.flow.labelCap])
-          : Strings.t("pair.code.dial", [root.flow.label])
+        text: Strings.t("pair.code.same", [root.flow.label])
         color: root.fg
         font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+        font.pixelSize: Style.font.title
+        font.weight: Font.DemiBold
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         lineHeight: 1.2
@@ -790,9 +775,10 @@ FocusScope {
       Text {
         width: Math.min(parent.width, Style.space(520))
         anchors.horizontalCenter: parent.horizontalCenter
-        visible: root.flow.role === "acceptor"
         textFormat: Text.PlainText
-        text: Strings.t("pair.code.also")
+        text: root.flow.role === "acceptor"
+          ? Strings.t("pair.code.accept", [root.flow.labelCap]) + " " + Strings.t("pair.code.also")
+          : Strings.t("pair.code.dial", [root.flow.label])
         color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption

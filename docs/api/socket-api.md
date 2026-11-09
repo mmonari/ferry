@@ -834,8 +834,8 @@ to `ui` receives it.
 | `open` | View |
 |--------|------|
 | `pair` | The Pair view. |
-| `arrange` | The Arrange view. |
-| `popover` | The popover of the bar widget. |
+| `arrange` | The Arrange view. The omarchy-shell plugin opens its Screens tab, which holds the layout. |
+| `popover` | The bar widget's quick view. The omarchy-shell plugin has no popover since 2026-11-09: it opens its panel on the tab it was on. |
 | `settings` | The Settings view. |
 
 ferryd 0.1.0 sends only `{"open":"pair"}`. It sends it when the user presses Open on the toast of
@@ -1134,7 +1134,7 @@ versions. The `code` is fixed.
 
 ## Config keys
 
-ferryd 0.1.0 has 18 keys. `config.schema` returns the same list, with a one-sentence `doc` for each
+ferryd 0.1.0 has 19 keys. `config.schema` returns the same list, with a one-sentence `doc` for each
 key.
 
 | Key | Type | Default | Range or choices | Applies |
@@ -1155,6 +1155,7 @@ key.
 | `clipboard.max_bytes` | int | `33554432` | 0 to 9223372036854775807 bytes | live |
 | `discovery.mdns` | bool | `true` | | restart |
 | `discovery.advertise` | bool | `true` | | restart |
+| `safety.cross_while_locked` | bool | `false` | | live |
 | `safety.lock_check_budget_ms` | int | `50` | 50 to 100 ms | restart |
 | `notify.enabled` | bool | `true` | | live |
 

@@ -38,6 +38,7 @@ advertise = true
 
 [safety]
 lock_check_budget_ms = 50     # 50 to 100
+cross_while_locked = false    # cross from the lock screen (ADR 0020)
 
 [notify]
 enabled = true                # desktop toasts; the bar plugin gets them either way

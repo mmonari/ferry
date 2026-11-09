@@ -4,5 +4,5 @@ singleton Fx 1.0 Fx.qml
 FerryWidget 1.0 FerryWidget.qml
 FerryButton 1.0 FerryButton.qml
 Glyph 1.0 Glyph.qml
-PopoverContent 1.0 PopoverContent.qml
+MachinesPane 1.0 MachinesPane.qml
 PanelCard 1.0 PanelCard.qml

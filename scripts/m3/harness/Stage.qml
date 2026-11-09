@@ -28,7 +28,7 @@ Item {
   readonly property alias panelContent: panelBody
   readonly property alias widget: ferryWidget
 
-  implicitWidth: showPanel && !showPopover ? Style.space(900) : 960
+  implicitWidth: showPanel && !showPopover ? panelCard.width + Style.space(28) : Math.max(960, panelCard.width + Style.space(28))
   implicitHeight: showPanel && !showPopover ? barStrip.height + Style.space(14) + panelCard.height + Style.space(14)
     : barStrip.height + Style.gapsOut * 2 + (showPopover ? popCard.height : 0) + (showPanel ? Style.space(24) + panelCard.height : 0)
 
@@ -156,7 +156,7 @@ Item {
     padding: Style.spacing.popupPadding
     radius: Style.cornerRadius
 
-    Ferry.PopoverContent {
+    Ferry.MachinesPane {
       id: popBody
       anchors.fill: parent
       anchors.topMargin: popCard.contentTopInset
@@ -172,11 +172,12 @@ Item {
     visible: stage.showPanel
     x: (stage.width - width) / 2
     y: showPopover ? popCard.y + popCard.height + Style.space(24) : barStrip.height + Style.space(14)
-    width: Math.min(Style.space(860), stage.width - Style.space(24))
-    height: Style.space(620)
+    // PanelHost's wanted size, inside KeyboardPanel's padding and border
+    width: Style.space(920) + contentLeftInset + contentRightInset
+    height: Style.space(600) + contentTopInset + contentBottomInset
     color: Commons.Color.popups.background
     borderSpec: Border.localOrSurfaceSpec("popups", "border", Commons.Color.popups.border, Commons.Color.popups.border, Math.max(1, Style.space(2)))
-    padding: Style.spacing.panelPadding
+    padding: Style.spacing.popupPadding
     radius: Style.cornerRadius
 
     Ferry.PanelCard {

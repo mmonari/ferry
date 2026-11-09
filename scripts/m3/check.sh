@@ -42,11 +42,10 @@ find_qmllint() {
 #                    line, so it reports a singleton as "not declared" for any file it is handed
 #                    alone. The declaration is in qmldir, plugin.test.mjs fails the build when a
 #                    `pragma Singleton` file is missing from it, and the real shell loads Fx through it.
-#   PanelHost.qml    a PanelWindow is a layer-shell window; qmllint has no backend to create it.
-#                    (Popover.qml and PanelHost.qml are loaded by URL for the same reason.)
-#   Popover.qml      `focusTarget: body.item`: Loader.item is typed QObject, focusTarget wants an
-#                    Item. The Loader only ever builds PopoverContent, an Item.
-LINT_ALLOW='ferry/Fx\.qml::? Type Fx not declared as singleton|ferry/PanelHost\.qml:[0-9]+:[0-9]+: Type PanelWindow is not creatable|ferry/Popover\.qml:[0-9]+:[0-9]+: Cannot assign binding of type QObject to QQuickItem'
+#   PanelHost.qml    `focusTarget: body.item`: Loader.item is typed QObject, focusTarget wants an
+#                    Item. The Loader only ever builds PanelCard, an Item. (PanelHost.qml is loaded by
+#                    URL: it is a layer-shell window, which the offscreen harness cannot build.)
+LINT_ALLOW='ferry/Fx\.qml::? Type Fx not declared as singleton|ferry/PanelHost\.qml:[0-9]+:[0-9]+: Cannot assign binding of type QObject to QQuickItem'
 
 lint_qml() {
   local ql lint out rc gated notes

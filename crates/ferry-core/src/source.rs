@@ -360,9 +360,9 @@ pub struct SourceMachine {
     /// The gate to restore after `PrepareForSleep(false)`.
     gate_before_sleep: Gate,
     lock: LockCheck,
-    /// A `LockPolled(Unlocked)` has arrived since start-up: before it, the
-    /// gate never sends `Enable`.
-    ever_unlocked: bool,
+    /// The lock gate has opened since start-up ([`Self::lock_open`]): before
+    /// that, the gate never sends `Enable`.
+    ever_open: bool,
     /// An `Enable` was sent and no `Disable` or `Disabled` since.
     enabled: bool,
     /// The barriers of the last `SetBarriers`: the ids `Activated` echoes.
@@ -569,7 +569,7 @@ impl SourceMachine {
             gate: Gate::Idle,
             gate_before_sleep: Gate::Idle,
             lock: LockCheck::Unknown,
-            ever_unlocked: false,
+            ever_open: false,
             enabled: false,
             barriers: Vec::new(),
             parked: Vec::new(),
@@ -731,8 +731,12 @@ impl SourceMachine {
                 self.maybe_rearm(out);
             }
             SourceEvent::Config(c) => {
+                let rule_changed = self.config.cross_while_locked != c.cross_while_locked;
                 self.config = c;
                 self.apply_config();
+                if rule_changed {
+                    self.lock_rule_changed(now, out);
+                }
             }
             SourceEvent::ForceRelease => self.end_any(LeaveReason::Forced, now, out),
             SourceEvent::Shutdown => self.end_any(LeaveReason::Shutdown, now, out),
@@ -1110,7 +1114,7 @@ impl SourceMachine {
     /// Topology or up peers changed: re-arm when the barriers differ and
     /// the gate is one that arms on its own (Idle, Armed, BarriersFailed).
     fn maybe_rearm(&mut self, out: &mut Actions<SourceAction>) {
-        if !self.ever_unlocked || self.lock != LockCheck::Unlocked {
+        if !self.ever_open || !self.lock_open() {
             return;
         }
         if !matches!(self.gate, Gate::Idle | Gate::Armed | Gate::BarriersFailed) {
@@ -1153,7 +1157,7 @@ impl SourceMachine {
         }
         self.barrier_retries = 0;
         self.retry_at = None;
-        if self.lock != LockCheck::Unlocked {
+        if !self.lock_open() {
             if self.enabled {
                 out.push(SourceAction::Portal(PortalCmd::Disable));
                 self.enabled = false;
@@ -1175,24 +1179,71 @@ impl SourceMachine {
         self.retry_at = None;
     }
 
+    /// Whether the last known lock state lets a crossing start: unlocked, or
+    /// locked with `[safety] cross_while_locked` on. Unknown never
+    /// does: no read has told the gate anything yet.
+    fn lock_open(&self) -> bool {
+        match self.lock {
+            LockCheck::Unlocked => true,
+            LockCheck::Locked => self.config.cross_while_locked,
+            LockCheck::Unknown => false,
+        }
+    }
+
+    /// Whether the fresh read an activation carries lets it cross. With
+    /// `cross_while_locked` on, Unknown crosses too: either answer would.
+    fn activation_lock_ok(&self, lock: LockCheck) -> bool {
+        lock == LockCheck::Unlocked || self.config.cross_while_locked
+    }
+
     fn lock_polled(&mut self, check: LockCheck, now: Micros, out: &mut Actions<SourceAction>) {
         match check {
             LockCheck::Unknown => self.counters.lock_unknown += 1,
             LockCheck::Locked => {
+                let onset = self.lock == LockCheck::Unlocked;
                 self.lock = LockCheck::Locked;
-                if !matches!(self.gate, Gate::Locked | Gate::Suspended) {
+                if self.config.cross_while_locked {
+                    // A lock that begins under a crossing still ends it: the
+                    // user sees the lock screen, and a password typed at it
+                    // must not reach the peer. A crossing started from the
+                    // lock screen is not ended by the polls that follow.
+                    if onset && self.gate != Gate::Suspended {
+                        self.end_any(LeaveReason::Locked, now, out);
+                    }
+                    self.lock_opened(out);
+                } else if !matches!(self.gate, Gate::Locked | Gate::Suspended) {
                     self.end_any(LeaveReason::Locked, now, out);
                     self.gate_locked(now, out);
                 }
             }
             LockCheck::Unlocked => {
                 self.lock = LockCheck::Unlocked;
-                let first = !self.ever_unlocked;
-                self.ever_unlocked = true;
-                if self.gate == Gate::Locked || (first && self.gate != Gate::Suspended) {
-                    self.arm(true, out);
-                }
+                self.lock_opened(out);
             }
+        }
+    }
+
+    /// The lock state is one that lets crossings start: arm a gate the lock
+    /// held shut, or the first time the gate opens since start-up.
+    fn lock_opened(&mut self, out: &mut Actions<SourceAction>) {
+        let first = !self.ever_open;
+        self.ever_open = true;
+        if self.gate == Gate::Locked || (first && self.gate != Gate::Suspended) {
+            self.arm(true, out);
+        }
+    }
+
+    /// `[safety] cross_while_locked` changed (`config.set`, live). On while
+    /// locked: the gate opens. Off while locked: what a lock poll does, so a
+    /// crossing from the lock screen ends.
+    fn lock_rule_changed(&mut self, now: Micros, out: &mut Actions<SourceAction>) {
+        if self.lock_open() {
+            self.lock_opened(out);
+        } else if self.lock == LockCheck::Locked
+            && !matches!(self.gate, Gate::Locked | Gate::Suspended)
+        {
+            self.end_any(LeaveReason::Locked, now, out);
+            self.gate_locked(now, out);
         }
     }
 
@@ -1342,8 +1393,14 @@ impl SourceMachine {
             self.release(Some(id), bounce_pos, out);
             return;
         }
-        if lock != LockCheck::Unlocked {
-            // Only Unlocked can lead to Enter; nothing is forwarded.
+        if lock == LockCheck::Locked && self.config.cross_while_locked {
+            // Crossing from the lock screen: later Locked polls
+            // are not an onset, so they do not end this crossing.
+            self.lock = LockCheck::Locked;
+        }
+        if !self.activation_lock_ok(lock) {
+            // Only Unlocked can lead to Enter, unless `cross_while_locked`
+            // is on; nothing is forwarded.
             self.counters.lock_refusals += 1;
             self.recycle(pending.buffered);
             self.release(Some(id), bounce_pos, out);

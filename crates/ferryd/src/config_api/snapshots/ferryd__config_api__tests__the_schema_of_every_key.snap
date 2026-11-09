@@ -145,6 +145,13 @@ expression: schema()
       "available": false
     },
     {
+      "key": "safety.cross_while_locked",
+      "type": "bool",
+      "default": false,
+      "applies": "live",
+      "doc": "Let the pointer cross to another machine while this machine's screen is locked. Keys typed then go to that machine. A lock that starts while you are on another machine still brings the pointer back"
+    },
+    {
       "key": "safety.lock_check_budget_ms",
       "type": "int",
       "default": 50,

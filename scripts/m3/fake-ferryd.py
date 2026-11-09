@@ -78,7 +78,8 @@ import sys
 import time
 
 API = 1
-VERSION = "0.1.0-fake"
+# what hello reports; FERRY_FAKE_VERSION sets it for pictures that are published (README)
+VERSION = os.environ.get("FERRY_FAKE_VERSION", "0.1.0-fake")
 COORD_CAP = 1 << 24  # ferry_core::wire::caps::COORD: an origin is at most this many px from zero
 LAYOUT_PEERS = 4  # caps::LAYOUT_PEERS: a layout holds this many peers, this machine included
 TOPICS = ["state", "peers", "layout", "pairing", "config", "notice", "ui", "edge"]
@@ -154,6 +155,7 @@ SCHEMA = [
     {"key": "clipboard.max_bytes", "type": "int", "default": 33554432, "min": 0, "max": 9223372036854775807, "unit": "bytes", "applies": "live", "doc": "The largest clipboard item that is shared"},
     {"key": "discovery.mdns", "type": "bool", "default": True, "applies": "restart", "doc": "Look for other machines on the network", "available": False},
     {"key": "discovery.advertise", "type": "bool", "default": True, "applies": "restart", "doc": "Let other machines on the network find this one", "available": False},
+    {"key": "safety.cross_while_locked", "type": "bool", "default": False, "applies": "live", "doc": "Let the pointer cross to another machine while this machine's screen is locked. Keys typed then go to that machine. A lock that starts while you are on another machine still brings the pointer back"},
     {"key": "safety.lock_check_budget_ms", "type": "int", "default": 50, "min": 50, "max": 100, "unit": "ms", "applies": "restart", "doc": "How long the screen-lock check may take before a crossing counts the screen as locked. A slow machine may need more"},
     {"key": "notify.enabled", "type": "bool", "default": True, "applies": "live", "doc": "Show Ferry's notifications on the desktop: the pairing code, a machine lost or back, a replaced layout, a problem that needs you. Off, they still reach the bar plugin"},
 ]

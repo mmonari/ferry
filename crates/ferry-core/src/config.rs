@@ -59,6 +59,9 @@ pub struct SourceConfig {
     /// `[safety] lock_check_budget_ms`, clamped. It sets the active lock
     /// poll and the Pending timeout too ([`LockBudget`]).
     pub lock_check_budget: LockBudget,
+    /// `[safety] cross_while_locked`: a crossing may start while this machine's screen is
+    /// locked. A lock that begins during a crossing still ends it.
+    pub cross_while_locked: bool,
 }
 
 impl Default for SourceConfig {
@@ -73,6 +76,7 @@ impl Default for SourceConfig {
             go_chord: GoChord::default(),
             repeat_hold_after_ms: 0,
             lock_check_budget: LockBudget::DEFAULT,
+            cross_while_locked: false,
         }
     }
 }

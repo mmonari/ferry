@@ -111,10 +111,11 @@ ShellRoot {
         var item = pop.peerItem(fp("lap"));
         waitFor(function () { return item && item.mode === "unpair" && item.thenPair === true; }, 1000, function (ok) {
           check("the card's button opens the question on the peer's own row, 'and pair again'", ok, item ? item.mode : "no row");
-          Ferry.FerryUi.closePanel();
+          // the pane is inside the open panel: going on to Pair is a change of tab (no widget here to open one)
+          Ferry.FerryUi.panelView = "screens";
           pop.unpairPeer(fp("lap"));
-          waitFor(function () { return Ferry.FerryUi.panelOpen && Ferry.FerryUi.panelView === "pair"; }, 3000, function (ok2) {
-            check("once unpaired it goes straight on to the Pair panel", ok2, "open=" + Ferry.FerryUi.panelOpen + " view=" + Ferry.FerryUi.panelView);
+          waitFor(function () { return Ferry.FerryUi.panelView === "pair"; }, 3000, function (ok2) {
+            check("once unpaired it goes straight on to the Pair tab", ok2, "view=" + Ferry.FerryUi.panelView);
             Ferry.FerryUi.closePanel();
             next(); }); }); }); },
 
@@ -383,7 +384,7 @@ ShellRoot {
     implicitHeight: 720
     color: "#101018"
 
-    Ferry.PopoverContent {
+    Ferry.MachinesPane {
       id: popover
       x: 10
       y: 10
