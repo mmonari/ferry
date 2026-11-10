@@ -87,7 +87,8 @@ Singleton {
   // The pulses that run: one per edge, `{ key, monitor, side, start, end }`, each dropped
   // when its pulse is over. A new crossing of an edge that still glows starts its pulse again.
   property var glows: []
-  readonly property int glowMs: 700
+  // Long enough for the aurora to rise, shimmer and fade (AuroraCurtain.qml).
+  readonly property int glowMs: 1150
 
   function glow(edge) {
     var key = edge.monitor + "/" + edge.side + "/" + Date.now();

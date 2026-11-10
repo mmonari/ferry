@@ -8,9 +8,10 @@ import "."
 // crossed, on this machine and, at the same moment, on the other one. ferryd says which edge in an
 // `edge` event; FerryUi keeps the pulses that run and loads this file only while there is one.
 //
-// One thin layer-shell strip per pulse, on the edge's monitor. Its input region is empty, so it
-// never takes a click, a scroll or the pointer row the barrier needs. The colour is the shell's
-// accent, which follows the Omarchy theme of this machine.
+// One layer-shell strip per pulse, on the edge's monitor, with an aurora curtain in it
+// (AuroraCurtain.qml) that rises from the crossed stretch. Its input region is empty, so it never
+// takes a click, a scroll or the pointer row the barrier needs. The colour is the shell's accent,
+// which follows the Omarchy theme of this machine.
 Scope {
   Variants {
     model: FerryUi.glows
@@ -20,8 +21,8 @@ Scope {
 
       required property var modelData
       readonly property bool across: modelData.side === "top" || modelData.side === "bottom"
-      // How far the glow reaches in from the edge.
-      readonly property int depth: 14
+      // How far the curtain's rays reach in from the edge.
+      readonly property int depth: 96
 
       // Resolved apart from `screen`: the window writes `screen` back when it maps, so a `visible`
       // that read it would loop.
@@ -50,37 +51,15 @@ Scope {
       implicitWidth: across ? 0 : depth
       implicitHeight: across ? depth : 0
 
-      Rectangle {
-        id: glow
-
+      AuroraCurtain {
         x: strip.across ? strip.modelData.start : 0
         y: strip.across ? 0 : strip.modelData.start
-        width: strip.across ? strip.modelData.end - strip.modelData.start : strip.depth
-        height: strip.across ? strip.depth : strip.modelData.end - strip.modelData.start
-        radius: strip.depth / 2
-        opacity: 0
-
-        // Brightest on the edge itself, gone a few pixels in.
-        gradient: Gradient {
-          orientation: strip.across ? Gradient.Vertical : Gradient.Horizontal
-          GradientStop {
-            position: 0
-            color: strip.modelData.side === "top" || strip.modelData.side === "left"
-              ? Commons.Color.accent : "transparent"
-          }
-          GradientStop {
-            position: 1
-            color: strip.modelData.side === "bottom" || strip.modelData.side === "right"
-              ? Commons.Color.accent : "transparent"
-          }
-        }
-
-        SequentialAnimation on opacity {
-          running: true
-          NumberAnimation { to: 0.95; duration: 90; easing.type: Easing.OutQuad }
-          PauseAnimation { duration: 140 }
-          NumberAnimation { to: 0; duration: 420; easing.type: Easing.InQuad }
-        }
+        side: strip.modelData.side
+        length: strip.modelData.end - strip.modelData.start
+        depth: strip.depth
+        tint: Commons.Color.accent
+        duration: FerryUi.glowMs
+        still: Fx.still
       }
     }
   }
