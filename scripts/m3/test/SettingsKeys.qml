@@ -65,7 +65,7 @@ ShellRoot {
     card.view = "pair";
     later(150, function () {
       card.view = "settings";
-      waitFor(function () { return view() && Object.keys(view().items).length === 19; }, 4000, function (ok) {
+      waitFor(function () { return view() && Object.keys(view().items).length === 20; }, 4000, function (ok) {
         if (!ok) check("the view can be opened again", false, "items=" + (view() ? Object.keys(view().items).length : "no view"));
         done();
       });
@@ -111,7 +111,7 @@ ShellRoot {
   property var steps: [
     // ---- the view is up, from a fake daemon with the real schema
     function () {
-      waitFor(function () { return client.connected && client.configSchema && client.config && view() && Object.keys(view().items).length === 19; }, 6000, function (ok) {
+      waitFor(function () { return client.connected && client.configSchema && client.config && view() && Object.keys(view().items).length === 20; }, 6000, function (ok) {
         check("the view draws one setting per key of the schema", ok, "items=" + (view() ? Object.keys(view().items).length : "no view"));
         check("every key of the schema has a row", ok && client.configSchema.every(function (k) { return view().items[k.key] !== undefined; }), "");
         next();
@@ -125,7 +125,7 @@ ShellRoot {
       var rows = [];
       seen.forEach(function (r) { if (r.indexOf(".") > 0 && rows.indexOf(r) < 0) rows.push(r); });
       var lastRow = rows[rows.length - 1];
-      check("Tab reaches every setting that has a control, group after group (a row with one choice, or a feature not built yet, has nothing to focus)", rows.length === 15 && rows.indexOf("input.emulation") < 0 && rows.indexOf("discovery.mdns") < 0 && rows.indexOf("clipboard.enabled") > 0, rows.length + ": " + rows.join(", "));
+      check("Tab reaches every setting that has a control, group after group (a row with one choice, or a feature not built yet, has nothing to focus)", rows.length === 16 && rows.indexOf("input.emulation") < 0 && rows.indexOf("discovery.mdns") < 0 && rows.indexOf("clipboard.enabled") > 0, rows.length + ": " + rows.join(", "));
       check("the first Tab from the open view goes into the first setting, not the header", seen[0] === "crossing.edge_resistance_px", seen.slice(0, 3).join(" > "));
       var last = seen.lastIndexOf(lastRow, seen.indexOf("PanelActionButton")); // a slider and its number are two stops
       check("the header (lock, close, tabs) comes after the last setting", last > 0 && seen[last + 1].indexOf(".") < 0 && seen.indexOf("PanelActionButton") > last && seen.indexOf("PanelActionButton") < last + 4, seen.join(" > "));
@@ -470,7 +470,7 @@ ShellRoot {
           check("the daemon goes away", gone, "");
           waitFor(function () { return client.connected && client.config && view() && client.configPending.length === 0; }, 8000, function (ok) {
             check("after the restart no key is pending, and the saved values are what runs", ok && cfg("discovery.mdns") === true && cfg("input.capture") === "portal", JSON.stringify(client.configPending) + " " + cfg("input.capture"));
-            check("the view comes back by itself", view() && Object.keys(view().items).length === 19, "");
+            check("the view comes back by itself", view() && Object.keys(view().items).length === 20, "");
             view().focusKey("peer.port");
             check("D-3: after the restart the port field shows the saved port", focused() && focused().text === String(cfg("peer.port")), "text=" + (focused() ? focused().text : "?") + " saved=" + cfg("peer.port"));
             check("D-3: after the restart the toggle shows the saved value", item("notify.enabled").checked === (cfg("notify.enabled") === true), "");

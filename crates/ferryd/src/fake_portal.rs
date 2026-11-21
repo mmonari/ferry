@@ -136,7 +136,7 @@ impl FakePortal {
                     let _ = ack.send(());
                     return;
                 }
-                DriverMsg::EisEnded { .. } | DriverMsg::SleepHandled => {}
+                DriverMsg::EisEnded { .. } | DriverMsg::SleepHandled | DriverMsg::KeyboardLost => {}
             }
         }
     }

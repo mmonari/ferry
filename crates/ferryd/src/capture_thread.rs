@@ -46,7 +46,7 @@ use ferry_core::source::{
     PortalCmd, SourceAction, SourceEvent, SourceMachine, SourceRole, SourceStatus,
 };
 use ferry_core::wire::{DATAGRAM_LEN, Datagram, LeaveReason};
-use ferry_core::{Actions, PeerId};
+use ferry_core::{Actions, Micros, PeerId};
 use ferry_net::{Connection, FrameError};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
@@ -107,7 +107,31 @@ struct Capture {
     edge: Option<ferry_core::geom::EdgeLink>,
     /// Pings to a peer that has gone quiet while it matters.
     prober: Prober,
+    /// What the keyboard did since the last activation, for the `KeyboardLost` report.
+    keys: KeyTrail,
+    /// The canonical hash of the last EIS keymap (BL-025: did the re-created keyboard change it).
+    keymap_hash: Option<String>,
+    /// When the last re-crossing after a keyboard loss started, for its done line.
+    recross_at: Option<Micros>,
     stop: bool,
+}
+
+/// The keys EIS gave since the last `Activated`, and the last of them. A re-created EIS
+/// keyboard ends the crossing; this says which key came last before it, and whether that was a
+/// modifier (row 11's trigger: Hyprland passes a capture's first modifier on to fcitx5, and the
+/// input method's keymap change makes it re-create the EIS keyboard).
+#[derive(Debug, Default, Clone, Copy)]
+struct KeyTrail {
+    activated: Option<Micros>,
+    keys: u32,
+    last: Option<(u32, bool, Micros)>,
+    /// When the last `KeyboardLost` ended a crossing: the keymap that follows it is reported.
+    lost: Option<Micros>,
+}
+
+/// evdev modifier keycodes: Ctrl, Shift, Alt, Super (left and right), AltGr, Caps Lock.
+fn is_modifier(code: u32) -> bool {
+    matches!(code, 29 | 97 | 42 | 54 | 56 | 100 | 125 | 126 | 58)
 }
 
 pub fn spawn(
@@ -158,6 +182,9 @@ fn run(
         role: SourceRole::Local,
         edge: None,
         prober: Prober::new(),
+        keys: KeyTrail::default(),
+        keymap_hash: None,
+        recross_at: None,
         stop: false,
     };
     if let Some(m) = &state.machine {
@@ -236,8 +263,33 @@ impl Capture {
         match cmd {
             CaptureCmd::Event(ev) => {
                 self.heard(&ev);
+                if matches!(ev, SourceEvent::Activated { .. }) {
+                    self.keys = KeyTrail {
+                        activated: Some(clock::now()),
+                        lost: self.keys.lost,
+                        ..KeyTrail::default()
+                    };
+                }
                 let sleep = matches!(ev, SourceEvent::PrepareForSleep { start: true });
+                let recrossed = match (&ev, self.machine.as_ref()) {
+                    (SourceEvent::Activated { .. }, Some(m)) => {
+                        Some(m.counters().keyboard_recrossings)
+                    }
+                    _ => None,
+                };
                 self.feed(ev);
+                if let (Some(before), Some(m)) = (recrossed, self.machine.as_ref())
+                    && m.counters().keyboard_recrossings > before
+                {
+                    let now = clock::now();
+                    tracing::info!(
+                        after_ms = self
+                            .recross_at
+                            .take()
+                            .map(|at| now.0.saturating_sub(at.0) / 1000),
+                        "re-crossed after the EIS keyboard loss: keys go to the remote again"
+                    );
+                }
                 if sleep {
                     // The release (if any) is already queued to the driver, ahead of this.
                     self.for_driver(DriverMsg::SleepHandled);
@@ -315,9 +367,10 @@ impl Capture {
     }
 
     /// Hyprland re-created the EIS keyboard during a capture and will not start it before the
-    /// next activation: no key would reach the target for the rest of this crossing, and a
-    /// modifier already forwarded would stay down there. Fail open: end the crossing now
-    /// (`Leave` + `Release` at the exit). The next crossing starts the new keyboard.
+    /// next activation: no key would reach the target for the rest of this crossing. The
+    /// machine re-crosses in place: it releases, nudges back through the same edge and
+    /// carries the crossing on with the new activation, which starts the new keyboard. When it
+    /// cannot, it fails open as before: `Leave(forced)` + `Release` at the exit.
     fn keyboard_lost(&mut self) {
         let active = self
             .machine
@@ -325,8 +378,32 @@ impl Capture {
             .is_some_and(|m| m.status().role != SourceRole::Local);
         self.live.bump("eis_keyboard_lost");
         if active {
-            tracing::warn!("Hyprland re-created the EIS keyboard during capture: releasing");
-            self.feed(SourceEvent::ForceRelease);
+            let now = clock::now();
+            let t = self.keys;
+            let ms = |at: Micros| now.0.saturating_sub(at.0) / 1000;
+            tracing::warn!(
+                since_activation_ms = t.activated.map(ms),
+                keys = t.keys,
+                last_key = t.last.map(|(code, _, _)| code),
+                last_pressed = t.last.map(|(_, pressed, _)| pressed),
+                last_key_modifier = t.last.is_some_and(|(code, _, _)| is_modifier(code)),
+                last_key_ago_ms = t.last.map(|(_, _, at)| ms(at)),
+                "Hyprland re-created the EIS keyboard during capture"
+            );
+            self.keys.lost = Some(now);
+            // Which keyboard Hyprland made main (read off this thread).
+            self.for_driver(DriverMsg::KeyboardLost);
+            self.handle(SourceEvent::KeyboardLost);
+            let remote = self
+                .machine
+                .as_ref()
+                .is_some_and(|m| m.status().role != SourceRole::Local);
+            if remote {
+                self.recross_at = Some(now);
+                tracing::info!("re-crossing in place to start the new EIS keyboard");
+            } else {
+                tracing::warn!("the crossing ended to give the keyboard back (fail open)");
+            }
         } else {
             tracing::debug!("EIS keyboard re-created while local");
         }
@@ -336,6 +413,7 @@ impl Capture {
     fn feed(&mut self, ev: SourceEvent) {
         match ev {
             SourceEvent::Keymap { text } => self.keymap(text),
+            SourceEvent::KeyboardLost => self.keyboard_lost(),
             ev => self.handle(ev),
         }
     }
@@ -351,6 +429,8 @@ impl Capture {
             t_eis,
         } = &ev
         {
+            self.keys.keys += 1;
+            self.keys.last = Some((u32::from(*code), *pressed, now));
             tracing::trace!(
                 code,
                 pressed,
@@ -382,6 +462,18 @@ impl Capture {
         let c = self.canon.canonical(raw);
         let (len, hash) = (c.text.len(), c.hash());
         let debug = tracing::enabled!(tracing::Level::DEBUG);
+        // The keymap of the keyboard Hyprland re-created, at the level of the loss.
+        if let Some(lost) = self.keys.lost.take()
+            && clock::now().0.saturating_sub(lost.0) < 2_000_000
+        {
+            tracing::info!(
+                len,
+                hash = %hash,
+                changed = self.keymap_hash.as_ref() != Some(&hash),
+                "keymap after the EIS keyboard loss"
+            );
+        }
+        self.keymap_hash = Some(hash.clone());
         self.handle(SourceEvent::Keymap { text: c.text });
         if debug && let Some(machine) = self.machine.as_ref() {
             tracing::debug!(

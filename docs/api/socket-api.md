@@ -1180,6 +1180,7 @@ These counters come from the parts of ferryd that this page describes.
 | `notification_actions` | Presses of the Open button on the toast of a pairing code. |
 | `releases` | Calls of `release`. |
 | `go_crossings`, `go_refused` | Key crossings (`go` or the go chord) that moved control, and the ones that did nothing. |
+| `keyboard_recrossings` | Crossings that kept going after Hyprland re-created the capture keyboard: ferryd released, nudged the cursor back through the same edge, and carried on with the new activation. `eis_keyboard_lost` counts every re-creation. |
 | `pair_attempts`, `pair_failures` | Pairing attempts and the attempts that failed. |
 | `layout_replaced` | Edits of this peer that a newer revision replaced. |
 

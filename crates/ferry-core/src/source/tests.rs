@@ -3706,3 +3706,200 @@ fn the_go_chord_hops_to_a_third_peer() {
     ));
     assert_eq!(r.m.status().peer, Some(third()));
 }
+
+// ---- keyboard loss: re-crossing in place ------------------------------------------
+
+const KEY_Y: u16 = 21;
+
+/// Lose the keyboard while remote: the actions of the loss.
+fn lose_keyboard(r: &mut Rig) -> Vec<SourceAction> {
+    r.ev(SourceEvent::KeyboardLost)
+}
+
+/// The exit of [`Rig::remote`]'s crossing (x = 800 on the bottom edge), 2 px inside.
+fn exit(r: &Rig) -> Point {
+    match &r.m.crossing {
+        Crossing::Remote(x) => r.m.to_local(x.activation.inside()),
+        other => panic!("not remote: {other:?}"),
+    }
+}
+
+/// Row 11's trigger, end to end: a modifier reaches the target, Hyprland re-creates the EIS
+/// keyboard, and the machine re-crosses in place. The target gets the modifier's release (its
+/// real one may fall in the gap) and nothing else: no `Leave`, no new `Enter`; the next key goes
+/// to it in the same session, and a later exit releases the new activation.
+#[test]
+fn a_keyboard_loss_while_remote_recrosses_in_place() {
+    let mut r = Rig::remote();
+    let session = r.m.status().session;
+    let first = r.activation;
+    let at = exit(&r);
+    let a = r.key(SUPER, true);
+    assert_eq!(
+        sends(&a),
+        [&Control::Key {
+            session,
+            code: SUPER,
+            pressed: true
+        }]
+    );
+
+    let a = lose_keyboard(&mut r);
+    assert_eq!(
+        a,
+        [
+            SourceAction::Send {
+                peer: netbook(),
+                msg: Control::Key {
+                    session,
+                    code: SUPER,
+                    pressed: false
+                }
+            },
+            release(first, at.x, at.y)
+        ],
+        "Super goes up there, then the release; no Leave"
+    );
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+    // The release's echo: the EIS stop, then the portal's Deactivated.
+    let a = r.ev(SourceEvent::StopEmulating);
+    assert_eq!(
+        a,
+        [SourceAction::Go {
+            x: at.x,
+            y: at.y,
+            dx: 0.0,
+            dy: 4.0
+        }]
+    );
+    assert!(
+        r.ev(SourceEvent::Deactivated {
+            activation_id: first
+        })
+        .is_empty()
+    );
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+
+    let a = r.activate(at.x, 1081.0);
+    assert!(sends(&a).is_empty(), "the target hears nothing: {a:?}");
+    assert!(
+        !a.iter()
+            .any(|a| matches!(a, SourceAction::Portal(PortalCmd::Release { .. })))
+    );
+    assert_eq!(r.m.counters().keyboard_recrossings, 1);
+    assert_eq!(r.m.status().session, session);
+
+    let a = r.key(KEY_Y, true);
+    assert_eq!(
+        sends(&a),
+        [&Control::Key {
+            session,
+            code: KEY_Y,
+            pressed: true
+        }],
+        "the next key reaches the target"
+    );
+    // Super's real release, if it comes, is an orphan: nothing more goes out.
+    assert!(sends(&r.key(SUPER, false)).is_empty());
+    let a = r.ev(SourceEvent::ForceRelease);
+    assert_eq!(a[1], release(r.activation, at.x, at.y));
+    assert_ne!(r.activation, first);
+}
+
+/// No echo from the release: the nudge goes out after 100 ms anyway.
+#[test]
+fn a_recrossing_nudges_without_the_release_echo() {
+    let mut r = Rig::remote();
+    lose_keyboard(&mut r);
+    assert!(r.wait(99).is_empty());
+    let a = r.wait(1);
+    assert!(matches!(a.as_slice(), [SourceAction::Go { .. }]), "{a:?}");
+}
+
+/// The nudge never activates: after 500 ms the crossing ends as forced, with no second
+/// `Release` (the first one stands).
+#[test]
+fn a_recrossing_that_never_activates_ends_forced() {
+    let mut r = Rig::remote();
+    lose_keyboard(&mut r);
+    r.ev(SourceEvent::StopEmulating);
+    r.ack_outstanding();
+    let a = r.wait(499);
+    assert!(sends(&a).iter().all(|m| matches!(m, Control::Held { .. })));
+    r.ack_outstanding();
+    let a = r.wait(1);
+    assert_eq!(a[0], leave(1, LeaveReason::Forced));
+    assert!(
+        !a.iter()
+            .any(|a| matches!(a, SourceAction::Portal(PortalCmd::Release { .. }))),
+        "{a:?}"
+    );
+    assert_eq!(r.m.status().role, SourceRole::Local);
+}
+
+/// A second loss within 2 s of a re-crossing fails open, as before BL-025.
+#[test]
+fn a_second_loss_soon_after_a_recrossing_fails_open() {
+    let mut r = Rig::remote();
+    let at = exit(&r);
+    lose_keyboard(&mut r);
+    r.ev(SourceEvent::StopEmulating);
+    r.activate(at.x, 1081.0);
+    r.ack_outstanding();
+    r.wait(500);
+    let a = lose_keyboard(&mut r);
+    assert_eq!(
+        a,
+        [
+            leave(1, LeaveReason::Forced),
+            release(r.activation, at.x, at.y)
+        ]
+    );
+    assert_eq!(r.m.status().role, SourceRole::Local);
+}
+
+/// A held button fails open: its release could land at home while the capture is off, and the
+/// drag rule would end the crossing on the next one.
+#[test]
+fn a_loss_with_a_button_down_fails_open() {
+    let mut r = Rig::remote();
+    r.ev(SourceEvent::Button {
+        code: BTN_LEFT,
+        pressed: true,
+    });
+    let a = lose_keyboard(&mut r);
+    assert_eq!(a[0], leave(1, LeaveReason::Forced));
+    assert_eq!(r.m.status().role, SourceRole::Local);
+}
+
+/// The re-activation meets a locked screen: the crossing ends as forced and the new activation
+/// is released at the exit.
+#[test]
+fn a_locked_reactivation_ends_forced() {
+    let mut r = Rig::remote();
+    let at = exit(&r);
+    lose_keyboard(&mut r);
+    r.ev(SourceEvent::StopEmulating);
+    let a = r.activate_with(at.x, 1081.0, LockCheck::Locked);
+    assert_eq!(a[0], leave(1, LeaveReason::Forced));
+    assert_eq!(a[1], release(r.activation, at.x, at.y));
+    assert_eq!(r.m.counters().keyboard_recrossings, 0);
+}
+
+/// The go chord cannot arrive during a re-crossing (no keyboard), but `ferry go` can: it is
+/// refused, so a hop never carries a released capture to another peer.
+#[test]
+fn go_during_a_recrossing_is_refused() {
+    let mut r = Rig::remote();
+    lose_keyboard(&mut r);
+    let a = go(&mut r, Side::Top, 0.0, 0.0);
+    assert!(refused(&a) && a.len() == 1, "{a:?}");
+    assert_eq!(r.m.status().role, SourceRole::Remote);
+}
+
+/// While local, a loss changes nothing.
+#[test]
+fn a_keyboard_loss_while_local_does_nothing() {
+    let mut r = Rig::armed();
+    assert!(lose_keyboard(&mut r).is_empty());
+}

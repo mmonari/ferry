@@ -17,12 +17,27 @@ keeps no state of its own: it draws what `ferryd` reports over its socket and se
 | `FerryWidget.qml`, `FerryButton.qml` | The bar widget, one per monitor, and its button |
 | `Popover.qml`, `PopoverContent.qml` | The popover and its body |
 | `PanelHost.qml`, `PanelCard.qml`, `panels/` | The panel window and its views: Arrange, Pair, Settings |
+| `TiledPanelHost.qml` | The same panel as an ordinary window that Hyprland tiles |
 | `FerryClient.qml` | The one socket connection: snapshots, events, calls, reconnect |
 | `FerryUi.qml` | The IPC target and which popover or panel is open |
 | `EdgeGlowHost.qml`, `AuroraCurtain.qml` | The glow on the edge a crossing went through, drawn as an aurora curtain |
 | `Model.js`, `Geometry.js`, `Arrange.js` | Pure logic, tested with node: widget state, layout geometry, the Arrange draft |
 | `Strings.js`, `Glyphs.js` | Every user-visible string and icon |
 | `views/`, `settings/` | The pieces the popover, panels and Settings view are built from |
+
+## The panel as a tiled window
+
+The panel opens as a centred popup. The button next to its close button turns it into an ordinary
+window titled `Ferry`, which Hyprland places like any other window, so what is behind it stays
+usable; the same button turns it back. The choice lasts until the shell restarts. The window's class
+is Quickshell's, `org.quickshell`. If your rules float new windows, tile this one by its title, for
+example in `~/.config/hypr/windows.lua`:
+
+```lua
+o.window({ class = "^org.quickshell$", title = "^Ferry$" }, { tile = true })
+```
+
+The bar's `showPeerName` setting is also a switch in the panel's Settings view, under **Bar**.
 
 ## IPC
 

@@ -40,8 +40,10 @@ FocusScope {
     FerryClient.connected, FerryClient.hasMethod("config.schema"), FerryClient.configSchema, FerryClient.config)
   readonly property var groups: Model.settingsGroups(FerryClient.configSchema)
   readonly property var banner: Model.pendingBanner(FerryClient.configPending)
-  // ferryd's groups, then the panel's own
-  readonly property var navGroups: groups
+  // The panel's own group, after ferryd's: the bar's setting lives in shell.json, not in ferryd, so its
+  // row is drawn here (a key with `local` set) and never sent to config.set.
+  readonly property var localGroup: ({ id: "bar", title: Strings.t("panel.bar.group"), keys: [{ key: "bar.show_peer_name", local: true }] })
+  readonly property var navGroups: groups.concat([localGroup])
   readonly property string current: {
     var want = FerryUi.settingsGroup;
     for (var i = 0; i < navGroups.length; i++) if (navGroups[i].id === want) return want;
@@ -67,9 +69,9 @@ FocusScope {
   }
 
   function groupOf(key) {
-    for (var i = 0; i < groups.length; i++)
-      for (var j = 0; j < groups[i].keys.length; j++)
-        if (groups[i].keys[j].key === key) return groups[i].id;
+    for (var i = 0; i < navGroups.length; i++)
+      for (var j = 0; j < navGroups[i].keys.length; j++)
+        if (navGroups[i].keys[j].key === key) return navGroups[i].id;
     return "";
   }
 
@@ -446,11 +448,27 @@ FocusScope {
                 foreground: root.fg
               }
 
-              SettingItem {
-                spec: modelData
-                foreground: root.fg
-                fontFamily: root.fontFamily
-                Component.onCompleted: root.register(modelData.key, this)
+              Loader {
+                width: parent.width
+                active: modelData.local !== true
+                sourceComponent: SettingItem {
+                  width: parent.width
+                  spec: modelData
+                  foreground: root.fg
+                  fontFamily: root.fontFamily
+                  Component.onCompleted: root.register(modelData.key, this)
+                }
+              }
+
+              Loader {
+                width: parent.width
+                active: modelData.local === true
+                sourceComponent: BarSettingRow {
+                  width: parent.width
+                  foreground: root.fg
+                  fontFamily: root.fontFamily
+                  Component.onCompleted: root.register(key, this)
+                }
               }
             }
           }

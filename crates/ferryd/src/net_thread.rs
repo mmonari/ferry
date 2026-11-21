@@ -485,7 +485,7 @@ impl Net {
                 Some(msg) = pair_rx.recv() => self.pairing.internal(msg).await,
                 () = sleep_until_instant(window_end) => self.pairing.window_due().await,
                 () = sleep_until(deadline) => self.target_event(TargetEvent::Tick),
-                () = beat.tick() => {
+                _ = beat.tick() => {
                     if ticks.is_multiple_of(per_ping) {
                         self.tick();
                     }

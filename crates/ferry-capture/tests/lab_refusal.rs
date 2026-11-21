@@ -17,20 +17,31 @@ fn is_lab() -> bool {
         })
 }
 
+/// The built example `name`. Cargo puts examples in `<target>/<profile>/examples/`, but the test
+/// binary's own place depends on the cargo version: `<profile>/deps/` up to 1.99, and
+/// `<profile>/build/<pkg>/<hash>/out/` from 1.100. So look in every directory above it.
+fn example(name: &str) -> std::path::PathBuf {
+    let exe = std::env::current_exe().expect("test exe path");
+    let file = format!("{name}{}", std::env::consts::EXE_SUFFIX);
+    exe.ancestors()
+        .skip(1)
+        .map(|dir| dir.join("examples").join(&file))
+        .find(|p| p.is_file())
+        .unwrap_or_else(|| {
+            panic!(
+                "example {name} not built: no examples/{file} above {}",
+                exe.display()
+            )
+        })
+}
+
 #[test]
 fn capture_probe_refuses_outside_a_lab_before_touching_the_portal() {
     if is_lab() {
         eprintln!("skipped: this is a lab machine, where the probe would run");
         return;
     }
-    let exe = std::env::current_exe().expect("test exe path");
-    let probe = exe
-        .parent()
-        .and_then(|deps| deps.parent())
-        .expect("target profile dir")
-        .join("examples")
-        .join(format!("capture-probe{}", std::env::consts::EXE_SUFFIX));
-    assert!(probe.exists(), "example not built: {}", probe.display());
+    let probe = example("capture-probe");
     for args in [
         &["run", "--edge", "right"][..],
         &["lock"],

@@ -595,6 +595,7 @@ impl State {
                 ("edge_parks", c.edge_parks),
                 ("go_crossings", c.go_crossings),
                 ("go_refused", c.go_refused),
+                ("keyboard_recrossings", c.keyboard_recrossings),
                 ("nonfinite_eis_values", c.nonfinite_dropped),
                 ("motion_coalesced", c.motion_coalesced),
                 ("motion_suppressed", c.motion_suppressed),

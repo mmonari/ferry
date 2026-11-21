@@ -871,8 +871,101 @@ fn go_crosses_by_key_and_the_go_chord_comes_home() {
         _ => None,
     });
     assert_eq!(home, Some(ferry_core::geom::Point { x: 100.0, y: 100.0 }));
-    let st = r.wait_gate("armed", None);
-    assert_eq!(st["counters"]["go_crossings"], 2);
+    r.wait_gate("armed", None);
+    // The counters reach `status` after the capture thread's next wake-up.
+    let c = &mut r.c;
+    let st = wait_for("both key crossings counted", || {
+        let st = c.result("status", json!(null));
+        (st["counters"]["go_crossings"] == 2).then_some(st)
+    });
     assert_eq!(st["counters"]["go_refused"], 1);
+    r.shutdown();
+}
+
+/// BL-025, row 11's trigger in process: the peer gets Super, Hyprland re-creates the EIS
+/// keyboard, and the daemon re-crosses in place (Super up on the peer, release, nudge back
+/// through the same edge, a new activation). The peer sees no `Leave` and no new `Enter`: the
+/// next key reaches it in the same session, where before BL-025 it landed on the host.
+#[test]
+fn a_keyboard_loss_keeps_the_keys_on_the_remote() {
+    let mut r = Rig::new(&[]);
+    r.cross();
+    let key = |r: &Rig, code, pressed| {
+        assert!(r.portal.event(SourceEvent::Key {
+            code,
+            pressed,
+            t_eis: ferry_core::time::Micros::ZERO,
+        }));
+    };
+    key(&r, 125, true);
+    let first = r.frame_where("Super", |m| matches!(m, Control::Key { .. }));
+    let Control::Key { session, .. } = first else {
+        unreachable!()
+    };
+    assert!(matches!(
+        first,
+        Control::Key {
+            code: 125,
+            pressed: true,
+            ..
+        }
+    ));
+
+    let since = std::time::Instant::now();
+    assert!(r.portal.event(SourceEvent::KeyboardLost));
+    let up = r.frame_where("Super up", |m| {
+        matches!(
+            m,
+            Control::Key { .. } | Control::Leave { .. } | Control::Enter { .. }
+        )
+    });
+    assert_eq!(
+        up,
+        Control::Key {
+            session,
+            code: 125,
+            pressed: false
+        },
+        "a key held across the loss goes up there, not a Leave"
+    );
+    r.release_after(since);
+    assert!(r.portal.event(SourceEvent::StopEmulating));
+    let nudge = wait_for("the re-crossing's nudge", || {
+        r.portal.nudges().first().copied()
+    });
+    assert_eq!(nudge, (800.0, 1077.0, 0.0, 4.0), "back through the exit");
+    assert!(r.portal.event(SourceEvent::StartEmulating));
+    assert!(r.portal.event(SourceEvent::Activated {
+        activation_id: 11,
+        barrier_id: 1,
+        x: nudge.0 + nudge.2,
+        y: nudge.1 + nudge.3,
+        lock: ferry_core::source::LockCheck::Unlocked,
+    }));
+    key(&r, 21, true);
+
+    // Everything the peer gets up to Y: no Leave, no Enter, no key but Y.
+    let next = r.frame_where("the next key or crossing frame", |m| {
+        matches!(
+            m,
+            Control::Key { .. } | Control::Leave { .. } | Control::Enter { .. }
+        )
+    });
+    assert_eq!(
+        next,
+        Control::Key {
+            session,
+            code: 21,
+            pressed: true
+        }
+    );
+    // The counters reach `status` after the capture thread's next wake-up.
+    let c = &mut r.c;
+    let st = wait_for("the re-crossing counted", || {
+        let st = c.result("status", json!(null));
+        (st["counters"]["keyboard_recrossings"] == 1).then_some(st)
+    });
+    assert_eq!(st["counters"]["eis_keyboard_lost"], 1);
+    assert_eq!(st["role"], "source", "still crossed: {st}");
     r.shutdown();
 }

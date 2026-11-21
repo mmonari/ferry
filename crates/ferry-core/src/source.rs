@@ -115,6 +115,12 @@ pub enum SourceEvent {
     Config(SourceConfig),
     /// `ferry release`.
     ForceRelease,
+    /// Hyprland re-created the EIS keyboard during a capture: no key reaches ferry
+    /// again before the next activation. While remote, the machine re-crosses in place: it lets
+    /// go of the held keys on the target, releases the capture, nudges the cursor back through
+    /// the same edge, and carries on with the new activation, so the target keeps its session.
+    /// Otherwise, or when that fails, it ends the crossing as `ForceRelease` does (fail open).
+    KeyboardLost,
     /// ferryd is exiting (SIGTERM, SIGINT, panic hook).
     Shutdown,
 
@@ -331,6 +337,8 @@ pub struct SourceCounters {
     /// Key crossings that did nothing: no usable link on that side, capture off, or the nudge's
     /// activation never came.
     pub go_refused: u64,
+    /// EIS keyboard losses that a re-crossing in place recovered.
+    pub keyboard_recrossings: u64,
 }
 
 /// The source machine. See the design note §5.1 for the state table.
@@ -411,6 +419,9 @@ pub struct SourceMachine {
     /// A key crossing whose nudge is on its way: the activation on its link crosses
     /// at once, whatever the edge resistance and dwell.
     going: Option<Going>,
+    /// When the last re-crossing after a keyboard loss started: a second loss soon
+    /// after it fails open instead of looping.
+    last_recross: Option<Micros>,
     counters: SourceCounters,
 }
 
@@ -451,6 +462,13 @@ const GO_TIMEOUT: Micros = Micros::from_millis(500);
 
 /// The nudge's relative motion: from [`RELEASE_INSET`] inside to past the edge line.
 const NUDGE_PX: f64 = 4.0;
+
+/// A re-crossing nudges once the release took effect, or after this at the latest.
+const RECROSS_RELEASE_WAIT: Micros = Micros::from_millis(100);
+
+/// A keyboard loss this soon after a re-crossing started fails open: row 11's triggers are
+/// used up by one re-creation, so a second one means something else is going on.
+const RECROSS_GUARD: Micros = Micros::from_millis(2000);
 
 /// Events buffered in `Pending` before overflow bounces the activation.
 pub const PENDING_MAX: usize = 64;
@@ -533,6 +551,23 @@ struct Remote {
     return_push: f64,
     /// What of the model's motion goes out as datagrams (A-04).
     pace: MotionPacer,
+    /// A re-crossing in place after an EIS keyboard loss: the capture is released
+    /// and the crossing waits for a new activation on its link.
+    recross: Option<Recross>,
+}
+
+/// A re-crossing in place. The target gets no `Leave` and no `Enter`: its session and
+/// cursor stay as they are, and snapshots go on, so a key that reaches the new keyboard lands
+/// where the ones before it did.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Recross {
+    /// The nudge is out. Before it, the machine waits for the release to take effect (its
+    /// `StopEmulating` or `Deactivated`): a nudge into a capture that is still on would move
+    /// nothing.
+    nudged: bool,
+    /// Before the nudge: when to nudge anyway. After it: when the activation is overdue and
+    /// the crossing ends as forced.
+    until: Micros,
 }
 
 /// Where a crossing's `Release` puts the cursor.
@@ -595,6 +630,7 @@ impl SourceMachine {
             last_leave: None,
             spare: Vec::with_capacity(PENDING_MAX),
             going: None,
+            last_recross: None,
             counters: SourceCounters::default(),
         }
         .configured()
@@ -637,7 +673,12 @@ impl SourceMachine {
                     });
                 }
             }
-            SourceEvent::StopEmulating => self.capture_ended(now, out),
+            SourceEvent::StopEmulating => {
+                // During a re-crossing it is the release's own echo.
+                if !self.recross_released(now, out) {
+                    self.capture_ended(now, out);
+                }
+            }
             // A non-finite delta or scroll value is dropped here, at the
             // machine's boundary (A-01): a NaN fails every
             // comparison, so it would pass the clamps and freeze the model
@@ -682,7 +723,9 @@ impl SourceMachine {
                 lock,
             } => self.activated(activation_id, barrier_id, Point { x, y }, lock, now, out),
             SourceEvent::Deactivated { activation_id } => {
-                if !self.released.contains(&Some(activation_id)) {
+                if self.released.contains(&Some(activation_id)) {
+                    self.recross_released(now, out);
+                } else {
                     self.capture_ended(now, out);
                 }
             }
@@ -739,6 +782,7 @@ impl SourceMachine {
                 }
             }
             SourceEvent::ForceRelease => self.end_any(LeaveReason::Forced, now, out),
+            SourceEvent::KeyboardLost => self.keyboard_lost(now, out),
             SourceEvent::Shutdown => self.end_any(LeaveReason::Shutdown, now, out),
             SourceEvent::PeerUp(p) => {
                 if !self.up.contains(&p) {
@@ -951,6 +995,9 @@ impl SourceMachine {
                 if let Some(t) = self.filter.deadline() {
                     d = d.min(t);
                 }
+                if let Some(x) = r.recross {
+                    d = d.min(x.until);
+                }
             }
         }
         if self.gate == Gate::Rezoning
@@ -1014,6 +1061,16 @@ impl SourceMachine {
         if self.going.is_some_and(|g| now >= g.until) {
             self.going = None;
             self.go_refused("the nudge did not activate the barrier", out);
+        }
+        if let Crossing::Remote(r) = &self.crossing
+            && let Some(x) = r.recross
+            && now >= x.until
+        {
+            if x.nudged {
+                self.end_remote(LeaveReason::Forced, true, ReleaseAt::Nothing, out);
+            } else {
+                self.recross_nudge(now, out);
+            }
         }
         match &self.crossing {
             Crossing::Remote(r) if now >= r.acked_at.plus(SOURCE_LIVENESS) => {
@@ -1378,6 +1435,11 @@ impl SourceMachine {
                 buffered: self.take_buffer(),
             },
             Crossing::Pending(p) => p,
+            Crossing::Remote(r) if r.recross.is_some() => {
+                self.crossing = Crossing::Remote(r);
+                self.reactivated(id, barrier_id, lock, out);
+                return;
+            }
             other => {
                 // Already arming or remote: a second activation is ignored.
                 self.crossing = other;
@@ -1559,6 +1621,7 @@ impl SourceMachine {
             next_snapshot: now.plus(SNAPSHOT_PERIOD),
             return_push: 0.0,
             pace: MotionPacer::new(now),
+            recross: None,
         }));
         let pos = self.pos();
         self.send(
@@ -1763,12 +1826,7 @@ impl SourceMachine {
             link_mid(&link),
             RELEASE_INSET,
         ));
-        let (dx, dy) = match side {
-            Side::Left => (-NUDGE_PX, 0.0),
-            Side::Right => (NUDGE_PX, 0.0),
-            Side::Top => (0.0, -NUDGE_PX),
-            Side::Bottom => (0.0, NUDGE_PX),
-        };
+        let (dx, dy) = nudge_delta(side);
         // A barrier parked after a bounce on this edge goes back up first.
         let before = self.parked.len();
         self.parked
@@ -1797,6 +1855,9 @@ impl SourceMachine {
         let (Crossing::Remote(r), Some(topo)) = (&self.crossing, self.topo.as_ref()) else {
             return;
         };
+        if r.recross.is_some() {
+            return self.go_refused("a crossing is starting", out);
+        }
         let Some(cur) = topo
             .monitors
             .iter()
@@ -2025,6 +2086,105 @@ impl SourceMachine {
         }
     }
 
+    // ---- keyboard loss ------------------------------------------
+
+    /// [`SourceEvent::KeyboardLost`]. Remote: let go of every held key on the target, release
+    /// the capture and re-cross in place. The keys go up first because their releases may fall
+    /// in the gap, where they land at home: lab VM c let Super and Y go there, and both stayed
+    /// down on the target until the crossing ended. Pending or Arming, a second loss within
+    /// [`RECROSS_GUARD`], a loss during a re-crossing, or a held button (its release could land
+    /// at home, and the drag rule would end the crossing): end the crossing as forced.
+    fn keyboard_lost(&mut self, now: Micros, out: &mut Actions<SourceAction>) {
+        let again = self
+            .last_recross
+            .is_some_and(|t| now < t.plus(RECROSS_GUARD));
+        let pos = match &self.crossing {
+            Crossing::Remote(r)
+                if r.recross.is_none() && !again && self.held.buttons().is_empty() =>
+            {
+                self.to_local(r.activation.inside())
+            }
+            _ => return self.end_any(LeaveReason::Forced, now, out),
+        };
+        // A release the repeat filter holds back is real now, then everything still down goes up.
+        if let Some(code) = self.filter.expire(Micros(u64::MAX)) {
+            self.key_edge(code, false, now, out);
+        }
+        let held: Vec<u16> = self.held.keys().to_vec();
+        for code in held {
+            self.key_edge(code, false, now, out);
+        }
+        self.filter.reset();
+        let Crossing::Remote(r) = &mut self.crossing else {
+            return;
+        };
+        let id = r.activation.id;
+        r.recross = Some(Recross {
+            nudged: false,
+            until: now.plus(RECROSS_RELEASE_WAIT),
+        });
+        self.last_recross = Some(now);
+        self.release(Some(id), Some(pos), out);
+    }
+
+    /// The release of a re-crossing took effect: nudge now. Returns false when no re-crossing
+    /// waits for it.
+    fn recross_released(&mut self, now: Micros, out: &mut Actions<SourceAction>) -> bool {
+        match &self.crossing {
+            Crossing::Remote(r) if r.recross.is_some_and(|x| !x.nudged) => {
+                self.recross_nudge(now, out);
+                true
+            }
+            Crossing::Remote(r) => r.recross.is_some(),
+            _ => false,
+        }
+    }
+
+    /// Warp to the exit (the contact point, 2 px inside) and nudge through the same edge.
+    fn recross_nudge(&mut self, now: Micros, out: &mut Actions<SourceAction>) {
+        let Crossing::Remote(r) = &mut self.crossing else {
+            return;
+        };
+        r.recross = Some(Recross {
+            nudged: true,
+            until: now.plus(GO_TIMEOUT),
+        });
+        let side = r.activation.side;
+        let warp = r.activation.inside();
+        let warp = self.to_local(warp);
+        let (dx, dy) = nudge_delta(side);
+        out.push(SourceAction::Go {
+            x: warp.x,
+            y: warp.y,
+            dx,
+            dy,
+        });
+    }
+
+    /// An activation during a re-crossing. On the crossing's own edge, with the lock gate
+    /// open, it carries the crossing on; anything else ends it as forced, releasing this
+    /// activation at the exit.
+    fn reactivated(
+        &mut self,
+        id: u32,
+        barrier_id: u32,
+        lock: LockCheck,
+        out: &mut Actions<SourceAction>,
+    ) {
+        let same = self.activation_lock_ok(lock);
+        let edge = self.barrier(barrier_id).map(|b| (b.monitor, b.side));
+        let Crossing::Remote(r) = &mut self.crossing else {
+            return;
+        };
+        r.activation.id = id;
+        r.recross = None;
+        if same && edge == Some((r.activation.monitor, r.activation.side)) {
+            self.counters.keyboard_recrossings += 1;
+        } else {
+            self.end_remote(LeaveReason::Forced, true, ReleaseAt::Exit, out);
+        }
+    }
+
     // ---- endings -------------------------------------------------------
 
     /// End whatever crossing is active for `reason`: Remote sends `Leave`
@@ -2095,6 +2255,17 @@ impl SourceMachine {
             );
         }
         self.last_leave = Some(why);
+        // A re-crossing already released its activation; the nudge's own may still come, and
+        // is refused until it would have been overdue.
+        let at = match r.recross {
+            Some(x) => {
+                if x.nudged {
+                    self.refuse_activation_until = Some(x.until);
+                }
+                ReleaseAt::Nothing
+            }
+            None => at,
+        };
         let pos = match at {
             ReleaseAt::Nothing => None,
             ReleaseAt::Exit => Some(r.activation.inside()),
@@ -2282,6 +2453,16 @@ impl SourceMachine {
 }
 
 /// The middle of a link, on its line (plane).
+/// A key crossing's nudge: [`NUDGE_PX`] outward through `side`.
+fn nudge_delta(side: Side) -> (f64, f64) {
+    match side {
+        Side::Left => (-NUDGE_PX, 0.0),
+        Side::Right => (NUDGE_PX, 0.0),
+        Side::Top => (0.0, -NUDGE_PX),
+        Side::Bottom => (0.0, NUDGE_PX),
+    }
+}
+
 fn link_mid(l: &EdgeLink) -> Point {
     l.side.point(
         (f64::from(l.span.0) + f64::from(l.span.1)) / 2.0,

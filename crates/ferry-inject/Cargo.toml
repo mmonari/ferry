@@ -13,7 +13,7 @@ workspace = true
 calloop = "=0.14.5"
 ferry-hypr-ipc = { path = "../ferry-hypr-ipc" }
 ferry-wl = { path = "../ferry-wl" }
-rustix = { version = "=1.1.5", features = ["event", "fs"] }
+rustix = { version = "=1.1.6", features = ["event", "fs"] }
 thiserror = "=2.0.21"
 tracing = "=0.1.44"
 wayland-client = "=0.31.15"

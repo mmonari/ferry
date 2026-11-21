@@ -99,16 +99,32 @@ BarWidget {
       owner: root,
       bar: Qt.binding(function () { return root.bar; }),
       hostWidget: root,
-      open: Qt.binding(function () { return root.opened; })
+      // the popout shows the open panel only while it is not tiled (FerryUi.panelTiled)
+      open: Qt.binding(function () { return root.opened && !FerryUi.panelTiled; })
     });
+  }
+
+  // The same panel as a window Hyprland tiles. It shows itself while the panel is open and tiled, and
+  // it is built beside the popout so both are ready before the first toggle.
+  property var tiled: null
+
+  function makeTiled() {
+    var component = Qt.createComponent(Qt.resolvedUrl("TiledPanelHost.qml"));
+    if (component.status !== Component.Ready) {
+      console.info("ferry: no tiled panel here: " + component.errorString().split("\n")[0]);
+      return;
+    }
+    root.tiled = component.createObject(root, { hostWidget: root });
   }
 
   Component.onCompleted: {
     FerryUi.attach(root);
     makePanel();
+    makeTiled();
   }
   Component.onDestruction: {
     FerryUi.detach(root);
     if (root.panel) root.panel.destroy();
+    if (root.tiled) root.tiled.destroy();
   }
 }

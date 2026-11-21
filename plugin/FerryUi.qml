@@ -31,6 +31,25 @@ Singleton {
   property var arrangeDraft: null
   // The group the Settings tab shows (a group id from Model.settingsGroups); "" is the first.
   property string settingsGroup: ""
+  // The panel as a window that Hyprland tiles (TiledPanelHost.qml) instead of the centred popout. The
+  // widget's open state does not change: only which surface shows it. Session only, so every start
+  // opens the popout.
+  property bool panelTiled: false
+
+  function toggleTiled() { panelTiled = !panelTiled; }
+
+  // The bar's "show the peer's name" setting, on the widget's shell.json entry. The write sends the whole
+  // entry back (updateEntryInline replaces it), so the entry's other keys are carried over.
+  readonly property bool showPeerName: widgets.length ? widgets[0].showPeerName : true
+
+  function setShowPeerName(show) {
+    if (widgets.length === 0 || !shell) return false;
+    var entry = {};
+    var current = widgets[0].settings || {};
+    for (var k in current) if (k !== "id") entry[k] = current[k];
+    entry.showPeerName = show === true;
+    return shell.updateEntryInline("ferry.bar", entry);
+  }
 
   // ----------------------------------------------------------------------------- widgets
   function attach(widget) {

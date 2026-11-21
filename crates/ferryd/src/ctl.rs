@@ -85,8 +85,9 @@ pub struct CtlInit {
     pub uid: u32,
     /// Where `READY=1`, `WATCHDOG=1` and `STOPPING=1` go.
     pub notify: Notifier,
-    /// systemd's watchdog is on: send `WATCHDOG=1` every tick while both threads are alive.
-    pub watchdog: bool,
+    /// systemd's watchdog is on: send `WATCHDOG=1` every tick while both threads are alive, and
+    /// hold the limit across a sleep.
+    pub watchdog: Option<watchdog::Watch>,
     /// Fires once the socket is being served.
     pub ready: std::sync::mpsc::Sender<()>,
     /// Where the toasts go. [`crate::notify::Options::default`] sends nowhere.
@@ -198,9 +199,8 @@ async fn main(init: CtlInit) {
     // The heartbeat runs on this loop's executor: its own tick proves ctl alive, and it goes on
     // through the shutdown order, whose awaits keep driving it.
     let beats = ctl.live.beats().clone();
-    if watchdog {
-        tokio::task::spawn_local(watchdog::heartbeat(beats.clone(), notify.clone()));
-    }
+    let sleep_feed =
+        watchdog.and_then(|watch| watchdog::spawn(beats.clone(), notify.clone(), watch));
     let _ = ready.send(());
 
     let mut signal = std::pin::pin!(wait_for_signal(signals));
@@ -239,6 +239,11 @@ async fn main(init: CtlInit) {
     beats.set_stopping();
     save_known(&ctl);
     shutdown(&ctl, &mut rx, &notify, net_thread, capture_thread).await;
+    // Its zbus objects must drop while the runtime still runs (see `watchdog::spawn`).
+    if let Some(feed) = sleep_feed {
+        feed.abort();
+        let _ = feed.await;
+    }
     drop(listener);
     drop(guard);
 }

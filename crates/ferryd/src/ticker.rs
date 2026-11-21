@@ -66,20 +66,23 @@ impl Ticker {
     }
 
     /// Waits for the next tick. A tick missed while the task ran elsewhere is not made up.
-    pub async fn tick(&mut self) {
+    /// Returns how many periods ended since the last tick (more than 1: the caller was late;
+    /// always 1 on the tokio fallback).
+    pub async fn tick(&mut self) -> u64 {
         match self {
             Self::Interval(i) => {
                 i.tick().await;
+                1
             }
             Self::Fd(fd) => loop {
                 let Ok(mut ready) = fd.readable().await else {
                     // the reactor is gone: nothing will wake this task again
                     std::future::pending::<()>().await;
-                    return;
+                    return 0;
                 };
                 let mut count = [0u8; 8];
                 match rustix::io::read(fd.get_ref(), &mut count) {
-                    Ok(_) => return,
+                    Ok(_) => return u64::from_ne_bytes(count),
                     Err(rustix::io::Errno::AGAIN) => ready.clear_ready(),
                     Err(e) => {
                         tracing::warn!(error = %e, "timerfd read failed");
@@ -117,8 +120,9 @@ mod tests {
             // 5 periods pass unread: one tick is ready at once, not five
             tokio::time::sleep(Duration::from_millis(260)).await;
             let t1 = Instant::now();
-            t.tick().await;
+            let missed = t.tick().await;
             assert!(t1.elapsed() < Duration::from_millis(20));
+            assert!((5..=6).contains(&missed), "it says it was late: {missed}");
             t.tick().await;
             assert!(
                 t1.elapsed() >= Duration::from_millis(30),

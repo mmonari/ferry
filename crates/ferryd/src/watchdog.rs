@@ -18,13 +18,18 @@
 //! Without `WATCHDOG_USEC` (ferryd run by hand) nothing is sent; the threads still tick.
 
 use std::io;
+use std::os::fd::OwnedFd;
 use std::os::unix::net::UnixDatagram;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
+use ferry_capture::Logind;
+use ferry_core::source::SourceEvent;
 use sd_notify::NotifyState;
+use tokio::sync::mpsc;
+use tokio::time::Instant;
 
 use crate::clock;
 
@@ -119,6 +124,16 @@ impl Beats {
     /// Whether `WATCHDOG=1` may go out now.
     pub fn may_notify(&self) -> bool {
         self.stopping.load(Ordering::Relaxed) || self.healthy()
+    }
+
+    /// The threads whose beat is too old for a send, with its age (`None`: never beat).
+    pub fn stale(&self) -> Vec<(Thread, Option<Duration>)> {
+        let limit = self.thread_period().mul_f32(1.2);
+        [Thread::Capture, Thread::Net]
+            .into_iter()
+            .map(|t| (t, self.age(t)))
+            .filter(|(_, a)| !a.is_some_and(|a| a < limit))
+            .collect()
     }
 
     /// Test hook (`Daemon::stall`): make `t` sleep for `d` at its next wake-up.
@@ -248,15 +263,271 @@ pub fn period_for(interval: Duration) -> Duration {
     (interval / 4).min(PERIOD).max(Duration::from_millis(1))
 }
 
-/// The `ctl` task: one tick per period; `WATCHDOG=1` if both threads are alive.
-pub async fn heartbeat(beats: Arc<Beats>, notifier: Notifier) {
-    let mut tick = crate::ticker::Ticker::new(beats.period());
-    loop {
-        tick.tick().await;
-        if beats.may_notify()
-            && let Err(e) = notifier.send(&[NotifyState::Watchdog])
+/// How long systemd may go without `WATCHDOG=1` while the machine sleeps: from logind's
+/// `PrepareForSleep(true)` to `(false)`.
+///
+/// systemd-sleep freezes `user.slice` before it suspends and thaws it after the resume, and the
+/// user manager that runs this unit is frozen with ferryd. `CLOCK_MONOTONIC` stops only in the
+/// sleep state proper, so the sleep hooks and device suspend and resume on either side of it count
+/// against `WatchdogSec`: on macarchy the session stayed frozen 0.9, 3.05, 5.4 and 13.3 s. At the
+/// thaw the user manager finds the timer expired and fires it within milliseconds, before
+/// ferryd's threads have run (2.5 ms on 2026-11-16, PID 1259). So before the freeze the heartbeat
+/// raises the limit to this, and puts it back once the machine is awake.
+pub const SLEEP_LIMIT: Duration = Duration::from_secs(60);
+
+/// How long the heartbeat waits for logind, connecting or taking its inhibitor.
+const LOGIND_TIMEOUT: Duration = Duration::from_secs(1);
+
+/// logind's `PrepareForSleep`, for the heartbeat. The `inhibitor` of a `start` is the delay
+/// inhibitor that holds the sleep back; the heartbeat drops it once systemd has the longer limit.
+#[derive(Debug)]
+pub struct SleepEvent {
+    pub start: bool,
+    pub inhibitor: Option<OwnedFd>,
+}
+
+/// What the heartbeat needs besides the beats.
+#[derive(Debug)]
+pub struct Watch {
+    /// `WatchdogSec`: the limit to put back after a sleep.
+    pub interval: Duration,
+    /// Subscribe to logind's `PrepareForSleep` (a real service). Tests send to `sleeps` instead.
+    pub logind: bool,
+    pub sleeps_tx: mpsc::UnboundedSender<SleepEvent>,
+    pub sleeps: mpsc::UnboundedReceiver<SleepEvent>,
+}
+
+impl Watch {
+    pub fn new(interval: Duration, logind: bool) -> Self {
+        let (sleeps_tx, sleeps) = mpsc::unbounded_channel();
+        Self {
+            interval,
+            logind,
+            sleeps_tx,
+            sleeps,
+        }
+    }
+}
+
+/// Where the limit systemd applies stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Limit {
+    /// `WatchdogSec`, or the interval put back after a sleep.
+    Normal,
+    /// [`SLEEP_LIMIT`] is in force. It goes back to the interval at `back` at the latest, or at
+    /// the first tick with both threads alive once `woken`.
+    Sleep { back: Instant, woken: bool },
+}
+
+struct Heart {
+    beats: Arc<Beats>,
+    notifier: Notifier,
+    interval: Duration,
+    limit: Limit,
+}
+
+fn usec(d: Duration) -> u32 {
+    u32::try_from(d.as_micros()).unwrap_or(u32::MAX)
+}
+
+impl Heart {
+    fn send(&self, states: &[NotifyState]) {
+        if let Err(e) = self.notifier.send(states) {
+            tracing::warn!(error = %e, ?states, "sd_notify failed");
+        }
+    }
+
+    fn tick(&mut self) {
+        if let Limit::Sleep { back, woken } = self.limit
+            && ((woken && self.beats.may_notify()) || Instant::now() >= back)
         {
-            tracing::warn!(error = %e, "sd_notify WATCHDOG=1 failed");
+            self.restore();
+            return;
+        }
+        if !self.beats.may_notify() {
+            // Name the thread that withheld the heartbeat.
+            for (thread, age) in self.beats.stale() {
+                tracing::debug!(
+                    ?thread,
+                    age_ms = age.map(|a| a.as_millis() as u64),
+                    "WATCHDOG=1 skipped: stale beat"
+                );
+            }
+            return;
+        }
+        self.send(&[NotifyState::Watchdog]);
+    }
+
+    /// `WATCHDOG_USEC` back to the interval. `WATCHDOG=1` goes with it only when both threads
+    /// are alive: a thread that hung across the sleep is then killed one interval later.
+    fn restore(&mut self) {
+        let healthy = self.beats.may_notify();
+        let usec = NotifyState::WatchdogUsec(usec(self.interval));
+        if healthy {
+            self.send(&[usec, NotifyState::Watchdog]);
+        } else {
+            self.send(&[usec]);
+        }
+        self.limit = Limit::Normal;
+        tracing::info!(
+            interval_ms = self.interval.as_millis() as u64,
+            healthy,
+            "watchdog restored after sleep"
+        );
+    }
+
+    fn sleep(&mut self, ev: SleepEvent) {
+        let now = Instant::now();
+        if ev.start {
+            // Before the inhibitor goes: logind then waits, and the user manager has this
+            // datagram in its queue before systemd-sleep freezes it.
+            let usec = NotifyState::WatchdogUsec(usec(SLEEP_LIMIT));
+            if self.beats.may_notify() {
+                self.send(&[usec, NotifyState::Watchdog]);
+            } else {
+                self.send(&[usec]);
+            }
+            drop(ev.inhibitor);
+            self.limit = Limit::Sleep {
+                back: now + SLEEP_LIMIT,
+                woken: false,
+            };
+            tracing::info!(
+                limit_s = SLEEP_LIMIT.as_secs(),
+                "watchdog extended for sleep"
+            );
+        } else if let Limit::Sleep { back, .. } = self.limit {
+            // Back at the first tick with both threads alive, and within one thread period
+            // whatever they say.
+            self.limit = Limit::Sleep {
+                back: back.min(now + self.beats.thread_period()),
+                woken: true,
+            };
+            if self.beats.may_notify() {
+                self.restore();
+            }
+        }
+    }
+}
+
+/// Spawns the heartbeat on `ctl`'s `LocalSet`, and the logind feed when `watch.logind` says so.
+/// Returns the feed: `ctl` must abort and await it before its runtime stops, because zbus spawns
+/// onto the runtime when its objects drop, and outside one that panics (in a destructor: abort).
+pub fn spawn(
+    beats: Arc<Beats>,
+    notifier: Notifier,
+    watch: Watch,
+) -> Option<tokio::task::JoinHandle<()>> {
+    let Watch {
+        interval,
+        logind,
+        sleeps_tx,
+        sleeps,
+    } = watch;
+    let feed = logind.then(|| tokio::task::spawn_local(logind_sleeps(sleeps_tx)));
+    tokio::task::spawn_local(heartbeat(beats, notifier, interval, sleeps));
+    feed
+}
+
+/// The `ctl` task: one tick per period; `WATCHDOG=1` if both threads are alive. Across a sleep
+/// the limit is raised to [`SLEEP_LIMIT`] and put back on wake.
+async fn heartbeat(
+    beats: Arc<Beats>,
+    notifier: Notifier,
+    interval: Duration,
+    mut sleeps: mpsc::UnboundedReceiver<SleepEvent>,
+) {
+    let mut tick = crate::ticker::Ticker::new(beats.period());
+    let mut heart = Heart {
+        beats,
+        notifier,
+        interval,
+        limit: Limit::Normal,
+    };
+    loop {
+        let back = match heart.limit {
+            Limit::Sleep { back, .. } => Some(back),
+            Limit::Normal => None,
+        };
+        tokio::select! {
+            periods = tick.tick() => {
+                if periods > 1 {
+                    // Ctl itself did not run for a while (a stall, or a frozen process).
+                    tracing::debug!(
+                        late_ms = heart
+                            .beats
+                            .period()
+                            .saturating_mul(u32::try_from(periods - 1).unwrap_or(u32::MAX))
+                            .as_millis() as u64,
+                        "watchdog tick late"
+                    );
+                }
+                heart.tick();
+            }
+            Some(ev) = sleeps.recv() => heart.sleep(ev),
+            () = sleep_until(back) => heart.tick(),
+        }
+    }
+}
+
+async fn sleep_until(at: Option<Instant>) {
+    match at {
+        Some(t) => tokio::time::sleep_until(t).await,
+        None => std::future::pending().await,
+    }
+}
+
+/// logind's `PrepareForSleep`, with a delay inhibitor of the heartbeat's own: the portal
+/// driver's goes once capture is released, and it is not there at all with capture off.
+async fn logind_sleeps(tx: mpsc::UnboundedSender<SleepEvent>) {
+    let mut logind = match tokio::time::timeout(LOGIND_TIMEOUT, Logind::connect()).await {
+        Ok(Ok(l)) => l,
+        Ok(Err(e)) => {
+            tracing::warn!(error = %e, "no logind: the watchdog is not extended across sleep");
+            return;
+        }
+        Err(_) => {
+            tracing::warn!("logind did not answer: the watchdog is not extended across sleep");
+            return;
+        }
+    };
+    let mut inhibitor = inhibit(&logind).await;
+    tracing::info!(
+        inhibitor = inhibitor.is_some(),
+        "watchdog follows logind sleep"
+    );
+    while let Some(ev) = logind.next().await {
+        let SourceEvent::PrepareForSleep { start } = ev else {
+            continue;
+        };
+        let held = if start { inhibitor.take() } else { None };
+        if tx
+            .send(SleepEvent {
+                start,
+                inhibitor: held,
+            })
+            .is_err()
+        {
+            return;
+        }
+        if !start {
+            inhibitor = inhibit(&logind).await;
+        }
+    }
+    tracing::warn!("logind connection gone: the watchdog is no longer extended across sleep");
+}
+
+async fn inhibit(logind: &Logind) -> Option<OwnedFd> {
+    let why = "extend the systemd watchdog across sleep";
+    match tokio::time::timeout(LOGIND_TIMEOUT, logind.inhibit_sleep_why(why)).await {
+        Ok(Ok(fd)) => Some(fd),
+        Ok(Err(e)) => {
+            tracing::warn!(error = %e, "no sleep inhibitor for the watchdog");
+            None
+        }
+        Err(_) => {
+            tracing::warn!("no sleep inhibitor for the watchdog: logind did not answer");
+            None
         }
     }
 }
@@ -337,6 +608,59 @@ mod tests {
         );
         assert_eq!(Beats::default().period(), PERIOD);
         assert_eq!(Beats::default().thread_period(), Duration::from_secs(1));
+    }
+
+    /// A wake that never comes (`PrepareForSleep(false)` lost): the limit still goes back at
+    /// [`SLEEP_LIMIT`], and only vouches for threads that are alive.
+    #[test]
+    fn the_sleep_limit_goes_back_without_a_wake() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("n.sock");
+        let sock = UnixDatagram::bind(&path).unwrap();
+        sock.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
+        let recv = || {
+            let mut buf = [0u8; 128];
+            let n = sock.recv(&mut buf).unwrap();
+            String::from_utf8_lossy(&buf[..n]).into_owned()
+        };
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let beats = Arc::new(Beats::default());
+            let mut heart = Heart {
+                beats: beats.clone(),
+                notifier: Notifier::Socket(path.clone()),
+                interval: Duration::from_secs(2),
+                limit: Limit::Normal,
+            };
+            heart.sleep(SleepEvent {
+                start: true,
+                inhibitor: None,
+            });
+            assert_eq!(
+                recv(),
+                "WATCHDOG_USEC=60000000\n",
+                "threads never beat: no WATCHDOG=1"
+            );
+            heart.tick();
+            assert!(
+                matches!(heart.limit, Limit::Sleep { .. }),
+                "not before the deadline"
+            );
+            heart.limit = Limit::Sleep {
+                back: Instant::now(),
+                woken: false,
+            };
+            heart.tick();
+            assert_eq!(heart.limit, Limit::Normal);
+            assert_eq!(recv(), "WATCHDOG_USEC=2000000\n");
+            beats.beat(Thread::Capture);
+            beats.beat(Thread::Net);
+            heart.tick();
+            assert_eq!(recv(), "WATCHDOG=1\n");
+        });
     }
 
     #[test]

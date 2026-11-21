@@ -45,6 +45,9 @@ pub enum DriverMsg {
     /// The capture thread handled `PrepareForSleep(true)`; the release it caused is queued
     /// ahead of this, so the sleep inhibitor can go once this is reached.
     SleepHandled,
+    /// Hyprland re-created the EIS keyboard during a crossing: log which keyboard it
+    /// made main, beside the one that was main at the activation.
+    KeyboardLost,
     /// Every message before this one has run.
     Flush(oneshot::Sender<()>),
     /// Close the session and stop.
@@ -129,6 +132,34 @@ pub(crate) struct Driver<B: Backend = Xdg> {
     logind: Option<Logind>,
     inhibitor: Option<OwnedFd>,
     sleep_deadline: Option<tokio::time::Instant>,
+    /// Hyprland's main keyboard as read just after the last activation (off the
+    /// activation's path), for the `KeyboardLost` report.
+    main_kb: std::rc::Rc<std::cell::RefCell<Option<String>>>,
+}
+
+/// How long the BL-025 keyboard read may take: it is a report, never on a release's path.
+const KEYBOARD_READ: Duration = Duration::from_millis(200);
+
+/// Hyprland's keyboards (`j/devices`): the main one, and every name with `*` on the main one.
+async fn keyboards(ipc: Instance) -> Option<(Option<String>, String)> {
+    let json = tokio::task::spawn_blocking(move || ipc.request_within("j/devices", KEYBOARD_READ))
+        .await
+        .ok()?
+        .ok()?;
+    let kbs = ferry_hypr_ipc::keyboards_from_json(&json).ok()?;
+    let main = kbs.iter().find(|k| k.main).map(|k| k.name.clone());
+    let all = kbs
+        .iter()
+        .map(|k| {
+            if k.main {
+                format!("*{}", k.name)
+            } else {
+                k.name.clone()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    Some((main, all))
 }
 
 /// `release_input_capture()` over Hyprland IPC, on the blocking pool. `ferry release` and a full
@@ -177,6 +208,7 @@ impl<B: Backend> Driver<B> {
             logind: None,
             inhibitor: None,
             sleep_deadline: None,
+            main_kb: Default::default(),
         }
     }
 
@@ -310,6 +342,20 @@ impl<B: Backend> Driver<B> {
                     );
                 }
             }
+            DriverMsg::KeyboardLost => {
+                if let Some(ipc) = self.ipc.clone() {
+                    let before = self.main_kb.borrow().clone();
+                    tokio::task::spawn_local(async move {
+                        let now = keyboards(ipc).await;
+                        tracing::warn!(
+                            main_at_activation = before.as_deref().unwrap_or("?"),
+                            main_now = now.as_ref().and_then(|(m, _)| m.as_deref()).unwrap_or("?"),
+                            keyboards = now.as_ref().map_or("?", |(_, all)| all.as_str()),
+                            "EIS keyboard loss: Hyprland's main keyboard"
+                        );
+                    });
+                }
+            }
             DriverMsg::SleepHandled => {
                 if self.sleep_deadline.take().is_some() {
                     self.inhibitor = None;
@@ -412,6 +458,16 @@ impl<B: Backend> Driver<B> {
                         "Activated"
                     );
                     self.note_lock(*lock);
+                    // The main keyboard of this activation, read after it is forwarded.
+                    if let Some(ipc) = self.ipc.clone() {
+                        let slot = self.main_kb.clone();
+                        *slot.borrow_mut() = None;
+                        tokio::task::spawn_local(async move {
+                            if let Some((main, _)) = keyboards(ipc).await {
+                                *slot.borrow_mut() = main;
+                            }
+                        });
+                    }
                 }
                 self.event(ev);
             }

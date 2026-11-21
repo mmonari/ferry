@@ -54,6 +54,8 @@ var UI = {
   chevronRight: cp(0xF0142),
   chevronDown: cp(0xF0140),
   keyboard: cp(0xF0313),
+  tile: cp(0xF05B2),      // window-restore: the panel becomes a window Hyprland tiles
+  popout: cp(0xF0E57),    // picture-in-picture: the panel goes back to the centred popup
   mouse: cp(0xF037D),
   cursor: cp(0xF01C0),
   info: cp(0xF02FD),

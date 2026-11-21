@@ -98,7 +98,7 @@ FocusScope {
     Item {
       id: lockRow
       visible: root.canLock
-      anchors.right: closeButton.left
+      anchors.right: tileButton.left
       anchors.rightMargin: Style.space(12)
       anchors.verticalCenter: parent.verticalCenter
       implicitWidth: lockLabel.implicitWidth + Style.space(10) + lockSwitch.width
@@ -138,6 +138,24 @@ FocusScope {
         cursorShape: Qt.PointingHandCursor
         onClicked: FerryClient.setLock(!FerryClient.locked)
       }
+
+      FocusRing {}
+    }
+
+    // Turns the panel between the centred popout and a window Hyprland tiles. The icon names where it
+    // goes next, so while tiled it offers the popout back.
+    PanelActionButton {
+      id: tileButton
+      anchors.right: closeButton.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
+      iconText: Glyphs.ui(FerryUi.panelTiled ? "popout" : "tile")
+      tooltipText: Strings.t(FerryUi.panelTiled ? "panel.popout" : "panel.tile")
+      foreground: root.fg
+      fontFamily: root.fontFamily
+      focusable: true
+      Accessible.name: tooltipText
+      onClicked: FerryUi.toggleTiled()
 
       FocusRing {}
     }

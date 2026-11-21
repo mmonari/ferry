@@ -184,3 +184,141 @@ fn no_heartbeat_without_a_watchdog() {
     );
     d.shutdown();
 }
+
+// ---- Sleep ----
+//
+// systemd-sleep freezes the whole user session, the user manager with it, and the time it stays
+// frozen counts against `WatchdogSec`. The daemon raises the limit on `PrepareForSleep(true)`
+// and puts it back on `(false)`. These tests read the notifications the way systemd does.
+
+/// When systemd would kill the daemon, reading `msgs` from `start` to `end`, or `None`. The
+/// rules are systemd 262's, measured in lab VM a on 2026-11-16: `WATCHDOG=1` restarts the timer,
+/// and `WATCHDOG_USEC=` sets the limit and restarts it too (a `WATCHDOG_USEC=1000000` sent 1.5 s
+/// after the last ping killed 1 s later, not at once).
+fn kill_at(
+    start: Instant,
+    msgs: &[(Instant, String)],
+    end: Instant,
+) -> Option<(Instant, Duration)> {
+    let mut limit = INTERVAL;
+    let mut last = start;
+    for (t, m) in msgs {
+        if *t > last + limit {
+            return Some((last + limit, limit));
+        }
+        let mut restart = false;
+        for line in m.lines() {
+            if line == "WATCHDOG=1" {
+                restart = true;
+            }
+            if let Some(us) = line.strip_prefix("WATCHDOG_USEC=") {
+                limit = Duration::from_micros(us.parse().unwrap());
+                restart = true;
+            }
+        }
+        if restart {
+            last = *t;
+        }
+    }
+    (end > last + limit).then_some((last + limit, limit))
+}
+
+fn usec_msgs(v: &[(Instant, String)]) -> Vec<(Instant, u64)> {
+    v.iter()
+        .flat_map(|(t, m)| {
+            m.lines()
+                .filter_map(|l| l.strip_prefix("WATCHDOG_USEC="))
+                .map(|us| (*t, us.parse().unwrap()))
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+const SLEEP_US: u64 = ferryd::watchdog::SLEEP_LIMIT.as_micros() as u64;
+
+/// The frozen session, as the daemon sees it from inside: both threads stop beating for longer
+/// than the interval. The limit holds through it and comes back on wake.
+#[test]
+fn a_sleep_raises_the_limit_and_the_wake_puts_it_back() {
+    let f = Fake::start();
+    let start = Instant::now();
+    let mut got = f.collect(Duration::from_millis(800));
+    f.daemon().prepare_for_sleep(true);
+    let slept = Instant::now();
+    f.daemon()
+        .stall(Thread::Capture, Duration::from_millis(1500));
+    f.daemon().stall(Thread::Net, Duration::from_millis(1500));
+    got.extend(f.collect(Duration::from_millis(1700)));
+    f.daemon().prepare_for_sleep(false);
+    let woke = Instant::now();
+    got.extend(f.collect(Duration::from_millis(1200)));
+    let end = Instant::now();
+
+    // The silence was longer than the interval, and no kill.
+    let silent = dogs(&got).windows(2).map(|w| w[1] - w[0]).max().unwrap();
+    assert!(silent > INTERVAL, "the stall made no silence: {silent:?}");
+    assert_eq!(kill_at(start, &got, end), None, "{got:?}");
+    let usec = usec_msgs(&got);
+    assert_eq!(usec.len(), 2, "one raise, one restore: {usec:?}");
+    assert!(usec[0].0 >= slept && usec[0].1 == SLEEP_US, "{usec:?}");
+    assert!(usec[1].0 >= woke && usec[1].1 == INTERVAL.as_micros() as u64);
+    assert!(
+        usec[1].0 - woke < PERIOD * 2,
+        "restored {:?} after the wake",
+        usec[1].0 - woke
+    );
+    // And the heartbeat runs on the interval again.
+    assert!(dogs(&got).iter().filter(|t| **t > woke).count() >= 5);
+}
+
+/// The guard still bites after a sleep: a net thread that hangs across the wake is killed one
+/// interval after the limit comes back (at most one thread period after `PrepareForSleep(false)`).
+#[test]
+fn a_net_thread_that_hangs_across_the_wake_is_still_killed() {
+    let f = Fake::start();
+    let start = Instant::now();
+    let mut got = f.collect(Duration::from_millis(800));
+    f.daemon().prepare_for_sleep(true);
+    f.daemon().stall(Thread::Net, Duration::from_millis(4000));
+    got.extend(f.collect(Duration::from_millis(600)));
+    f.daemon().prepare_for_sleep(false);
+    let woke = Instant::now();
+    got.extend(f.collect(Duration::from_millis(2000)));
+    let end = Instant::now();
+
+    let (kill, limit) = kill_at(start, &got, end).expect("a hung net thread must be killed");
+    assert_eq!(limit, INTERVAL, "killed on the restored limit: {got:?}");
+    assert!(kill > woke, "killed before the wake: {got:?}");
+    assert!(
+        kill - woke <= PERIOD + INTERVAL + Duration::from_millis(150),
+        "killed {:?} after the wake",
+        kill - woke
+    );
+}
+
+/// After a sleep and a wake, a net stall stops the heartbeat exactly as it does before one.
+#[test]
+fn a_net_stall_after_a_sleep_is_killed_as_before() {
+    let f = Fake::start();
+    let start = Instant::now();
+    let mut got = f.collect(Duration::from_millis(600));
+    f.daemon().prepare_for_sleep(true);
+    got.extend(f.collect(Duration::from_millis(300)));
+    f.daemon().prepare_for_sleep(false);
+    got.extend(f.collect(Duration::from_millis(600)));
+    f.daemon().stall(Thread::Net, Duration::from_millis(2500));
+    let stalled = Instant::now();
+    got.extend(f.collect(Duration::from_millis(2000)));
+    let end = Instant::now();
+
+    assert_eq!(usec_msgs(&got).len(), 2, "{got:?}");
+    let (kill, limit) = kill_at(start, &got, end).expect("a stalled net thread must be killed");
+    assert_eq!(limit, INTERVAL);
+    assert!(kill > stalled);
+    // as in `watchdog_stops`: silent within 4 periods, killed one interval after the last send
+    assert!(
+        kill - stalled <= PERIOD * 4 + INTERVAL,
+        "killed {:?} after the stall began",
+        kill - stalled
+    );
+}

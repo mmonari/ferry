@@ -159,6 +159,8 @@ pub struct Daemon {
     tx: mpsc::Sender<CtlMsg>,
     join: Option<std::thread::JoinHandle<()>>,
     live: SharedLive,
+    /// The heartbeat's `PrepareForSleep` feed, when the watchdog is on (test hook).
+    sleeps: Option<tokio::sync::mpsc::UnboundedSender<watchdog::SleepEvent>>,
 }
 
 impl Daemon {
@@ -285,10 +287,12 @@ impl Daemon {
             }
         });
         let watchdog = watchdog.filter(|_| !matches!(notifier, Notifier::Off));
-        if sd_notify {
-            live.lock().service =
-                watchdog::own_service().map(|name| live::Service { name, watchdog });
-        }
+        let service = if sd_notify {
+            watchdog::own_service()
+        } else {
+            None
+        };
+        live.lock().service = service.clone().map(|name| live::Service { name, watchdog });
         if let Some(interval) = watchdog {
             live.beats().set_period(watchdog::period_for(interval));
             tracing::info!(
@@ -358,6 +362,10 @@ impl Daemon {
         };
         let (ready_tx, ready_rx) = std::sync::mpsc::channel();
         let net_tx = net.tx.clone();
+        // logind only inside a real service: a test daemon, or a ferryd started by hand from a
+        // terminal that inherited the variables, must not hold the machine's sleep back.
+        let watch = watchdog.map(|interval| watchdog::Watch::new(interval, service.is_some()));
+        let sleeps = watch.as_ref().map(|w| w.sleeps_tx.clone());
         let init = ctl::CtlInit {
             state,
             paths: paths.clone(),
@@ -378,7 +386,7 @@ impl Daemon {
             handle_signals,
             uid: socket_uid.unwrap_or_else(|| rustix::process::getuid().as_raw()),
             notify: notifier.clone(),
-            watchdog: watchdog.is_some(),
+            watchdog: watch,
             ready: ready_tx,
             toasts,
         };
@@ -426,6 +434,7 @@ impl Daemon {
             tx,
             join: Some(join),
             live,
+            sleeps,
         })
     }
 
@@ -434,6 +443,18 @@ impl Daemon {
     #[doc(hidden)]
     pub fn stall(&self, thread: watchdog::Thread, d: Duration) {
         self.live.beats().stall(thread, d);
+    }
+
+    /// Test hook: logind's `PrepareForSleep(start)`, as the watchdog's heartbeat gets it.
+    /// Nothing happens when the watchdog is off.
+    #[doc(hidden)]
+    pub fn prepare_for_sleep(&self, start: bool) {
+        if let Some(tx) = &self.sleeps {
+            let _ = tx.send(watchdog::SleepEvent {
+                start,
+                inhibitor: None,
+            });
+        }
     }
 
     /// Test hook for a backlog on the net thread: after every event it handles, the net loop

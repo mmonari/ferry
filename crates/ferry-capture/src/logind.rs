@@ -56,17 +56,15 @@ impl Logind {
     /// `InhibitDelayMaxSec`, 5 s by default) after `PrepareForSleep(true)`
     /// until this fd is closed. Drop it once the release is sent.
     pub async fn inhibit_sleep(&self) -> Result<OwnedFd, zbus::Error> {
+        self.inhibit_sleep_why("release input capture before sleep")
+            .await
+    }
+
+    /// [`Logind::inhibit_sleep`] with another reason, as `systemd-inhibit --list` shows it.
+    pub async fn inhibit_sleep_why(&self, why: &str) -> Result<OwnedFd, zbus::Error> {
         let fd: zvariant::OwnedFd = self
             .proxy
-            .call(
-                "Inhibit",
-                &(
-                    "sleep",
-                    "Ferry",
-                    "release input capture before sleep",
-                    "delay",
-                ),
-            )
+            .call("Inhibit", &("sleep", "Ferry", why, "delay"))
             .await?;
         Ok(fd.into())
     }

@@ -25,6 +25,6 @@ tracing = "=0.1.44"
 
 [dev-dependencies]
 # Only examples/capture-probe.rs; no file in src/ names it.
-rustix = { version = "=1.1.5", features = ["time"] }
+rustix = { version = "=1.1.6", features = ["time"] }
 tokio = { version = "=1.53.3", features = ["rt", "macros", "time", "net", "io-util", "sync", "signal"] }
 tempfile = "=3.27.0"
